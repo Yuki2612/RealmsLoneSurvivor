@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.image.BufferedImage;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.ArrayList;
 import gameproject.skill.Upgrade;
 import gameproject.meta.CharacterClass;
+import gameproject.meta.PlayerData;
 
 public class Player {
     private float x, y;
@@ -35,16 +37,79 @@ public class Player {
     private final long DASH_DURATION = 150;
     private final float DASH_SPEED = 18.0f;
 
+    // FSM & Animation System (PRO Version)
+    public enum PlayerState {
+        IDLE, RUN
+    }
+    private PlayerState currentState = PlayerState.IDLE;
+    private String animDir = "down";
+    private boolean facingRight = true;
+    
+    private Map<String, Animation> animations = new HashMap<>();
+    private Animation activeAnim;
+
     public Player(float startX, float startY, CharacterClass charClass) {
         this.x = startX;
         this.y = startY;
-        this.dashCooldown = (long)(2000 * (1.0f - gameproject.meta.PlayerData.statDashLevel * 0.02f));
+        this.dashCooldown = (long)(2000 * (1.0f - PlayerData.statDashLevel * 0.02f));
         this.lastDashTime = -dashCooldown;
-        this.hearts = charClass.baseHp + (gameproject.meta.PlayerData.statHealthLevel / 10);
-        this.speed = (5.0f * charClass.speedMulti) * (1.0f + gameproject.meta.PlayerData.statSpeedLevel * 0.02f);
+        this.hearts = charClass.baseHp + (PlayerData.statHealthLevel / 10);
+        this.speed = (5.0f * charClass.speedMulti) * (1.0f + PlayerData.statSpeedLevel * 0.02f);
+        
+        initAnimations(charClass);
+    }
+
+    private void initAnimations(CharacterClass charClass) {
+        String pKey = PlayerData.getPlayerImageKey();
+        String fallback = "player1";
+
+        // Định nghĩa các cặp State_Direction
+        String[] states = {"idle", "run"};
+        String[] dirs = {"side", "down", "up"};
+
+        for (String s : states) {
+            for (String d : dirs) {
+                String key = s + "_" + d;
+                int delay = s.equals("run") ? 6 : 8; // Chạy nhanh hơn đứng yên
+                Animation anim = new Animation(delay);
+                
+                // Caching: Lấy từ ImageManager
+                BufferedImage[] frames = ImageManager.getAnimation(pKey + "_" + key);
+                if (frames == null) frames = ImageManager.getAnimation(fallback + "_" + key);
+                
+                // Fallback đặc biệt cho idle_up
+                if (frames == null && s.equals("idle") && d.equals("up")) {
+                    frames = ImageManager.getAnimation(pKey + "_run_up");
+                    if (frames == null) frames = ImageManager.getAnimation(fallback + "_run_up");
+                }
+
+                if (frames != null) {
+                    anim.setFrames(frames);
+                    animations.put(key, anim);
+                }
+            }
+        }
+        
+        // Mặc định
+        activeAnim = animations.get("idle_down");
+        if (activeAnim == null) activeAnim = animations.get("idle_side");
+    }
+
+    private void setState(PlayerState newState, String newDir) {
+        String stateKey = (newState == PlayerState.RUN ? "run" : "idle") + "_" + newDir;
+        Animation nextAnim = animations.get(stateKey);
+        
+        if (nextAnim != null && nextAnim != activeAnim) {
+            activeAnim = nextAnim;
+        }
+        currentState = newState;
+        animDir = newDir;
     }
 
     public void update(int screenWidth, int screenHeight) {
+        boolean isMoving = false;
+        String nextDir = animDir;
+
         if (isDashing) {
             if (System.currentTimeMillis() - dashStartTime >= DASH_DURATION) {
                 isDashing = false;
@@ -53,34 +118,53 @@ public class Player {
                 y += dashDirY * DASH_SPEED;
                 x = Math.max(0, Math.min(x, GamePanel.WORLD_WIDTH - SIZE));
                 y = Math.max(0, Math.min(y, GamePanel.WORLD_HEIGHT - SIZE));
+                isMoving = true;
             }
         } else {
-            boolean isMoving = false;
             float currentDirX = 0, currentDirY = 0;
             if (up && y > 0) {
                 y -= speed;
                 currentDirY = -1;
                 isMoving = true;
+                nextDir = "up";
             }
             if (down && y < GamePanel.WORLD_HEIGHT - SIZE) {
                 y += speed;
                 currentDirY = 1;
                 isMoving = true;
+                nextDir = "down";
             }
             if (left && x > 0) {
                 x -= speed;
                 currentDirX = -1;
                 isMoving = true;
+                nextDir = "side";
+                facingRight = false;
             }
             if (right && x < GamePanel.WORLD_WIDTH - SIZE) {
                 x += speed;
                 currentDirX = 1;
                 isMoving = true;
+                nextDir = "side";
+                facingRight = true;
             }
+
             if (isMoving) {
                 lastDirX = currentDirX;
                 lastDirY = currentDirY;
+            } else {
+                // Hướng khi đứng yên dựa trên hướng cuối cùng
+                if (lastDirY < 0) nextDir = "up";
+                else if (lastDirY > 0) nextDir = "down";
+                else nextDir = "side";
             }
+        }
+
+        // Chuyển đổi State & Animation thông qua FSM
+        setState(isMoving ? PlayerState.RUN : PlayerState.IDLE, nextDir);
+        
+        if (activeAnim != null) {
+            activeAnim.update();
         }
     }
 
@@ -88,24 +172,27 @@ public class Player {
         if (isInvulnerable() && System.currentTimeMillis() % 200 < 100)
             return;
 
-        java.awt.image.BufferedImage img = ImageManager.get("player");
+        BufferedImage img = (activeAnim != null) ? activeAnim.getCurrentFrame() : null;
+
         if (img != null) {
             int drawX = (int) x - 10;
             int drawY = (int) y - 20;
             int drawSize = SIZE + 20;
+            
+            Graphics2D g2d = (Graphics2D) g.create();
             if (isDashing) {
-                Graphics2D g2d = (Graphics2D) g.create();
                 g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
-                g2d.drawImage(img, drawX, drawY, drawSize, drawSize, null);
-                g2d.dispose();
-            } else {
-                g.drawImage(img, drawX, drawY, drawSize, drawSize, null);
             }
+
+            if (animDir.equals("side") && !facingRight) {
+                g2d.drawImage(img, drawX + drawSize, drawY, -drawSize, drawSize, null);
+            } else {
+                g2d.drawImage(img, drawX, drawY, drawSize, drawSize, null);
+            }
+            g2d.dispose();
         } else {
-            if (isDashing)
-                g.setColor(Color.CYAN);
-            else
-                g.setColor(Color.RED);
+            // Fallback cuối: Khối vuông màu đỏ
+            g.setColor(isDashing ? Color.CYAN : Color.RED);
             g.fillRect((int) x, (int) y, SIZE, SIZE);
         }
     }
@@ -203,6 +290,12 @@ public class Player {
 
     public boolean isInvulnerable() {
         return System.currentTimeMillis() < invulnerableUntil;
+    }
+
+    public void addInvulnerability(long duration) {
+        long now = System.currentTimeMillis();
+        if (invulnerableUntil < now) invulnerableUntil = now;
+        invulnerableUntil += duration;
     }
 
     public Rectangle getBounds() {

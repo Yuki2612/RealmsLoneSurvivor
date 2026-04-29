@@ -122,7 +122,11 @@ public abstract class Enemy {
     }
 
     // ĐÂY LÀ HÀM BẠN ĐÃ LÀM THIẾU
-    public Projectile shoot() {
+    public java.util.List<gameproject.weapon.Projectile> shoot() {
+        return null;
+    }
+
+    public java.util.List<Enemy> summon() {
         return null;
     }
 
@@ -154,7 +158,7 @@ public abstract class Enemy {
         takeDamageBase(damage, vfxManager, currentTime, poisonEndTime > currentTime ? Color.GREEN : Color.WHITE);
     }
 
-    private void takeDamageBase(int damage, VFXManager vfxManager, long currentTime, Color textColor) {
+    public void takeDamageBase(int damage, VFXManager vfxManager, long currentTime, Color textColor) {
         this.hp -= damage;
         hitFlashEndTime = currentTime + 80; // Hit flash 80ms
         if (vfxManager != null) {

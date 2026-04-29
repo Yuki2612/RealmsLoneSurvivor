@@ -67,6 +67,7 @@ public class GamePanel extends JPanel implements Runnable {
         SoundManager.load("explosion", "app/res/explosion.wav");
         SoundManager.load("levelup", "app/res/levelup.wav");
         SoundManager.load("laser", "app/res/laser.wav");
+        SoundManager.load("shield", "app/res/shield.wav");
 
         FontManager.load("app/res/pixel_font.ttf");
         ImageManager.load("heart", "app/res/heart.png");
@@ -82,11 +83,24 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         ImageManager.load("player", "app/res/player.png");
-        for (int i = 1; i <= 5; i++)
+        for (int i = 1; i <= 5; i++) {
+            ImageManager.load("player" + i, "app/res/player" + i + ".png");
             ImageManager.load("enemy" + i, "app/res/enemy" + i + ".png");
+            
+            // Load Animations (Cập nhật thông số chính xác từ thuộc tính ảnh)
+            String prefix = "player" + i;
+            ImageManager.loadAnimation(prefix + "_idle_side", "app/res/" + prefix + "_idle_side.png", 16);
+            ImageManager.loadAnimation(prefix + "_run_side", "app/res/" + prefix + "_run_side.png", 10);
+            ImageManager.loadAnimation(prefix + "_idle_down", "app/res/" + prefix + "_idle_down.png", 10);
+            ImageManager.loadAnimation(prefix + "_run_down", "app/res/" + prefix + "_run_down.png", 12);
+            ImageManager.loadAnimation(prefix + "_idle_up", "app/res/" + prefix + "_idle_up.png", 10);
+            ImageManager.loadAnimation(prefix + "_run_up", "app/res/" + prefix + "_run_up.png", 12);
+        }
         ImageManager.load("boss1", "app/res/boss1.png");
         ImageManager.load("boss2", "app/res/boss2.png");
         ImageManager.load("boss3", "app/res/boss3.png");
+        ImageManager.load("chest1", "app/res/chest1.png");
+        ImageManager.load("chest2", "app/res/chest2.png");
 
         PlayerData.load();
 
@@ -114,11 +128,12 @@ public class GamePanel extends JPanel implements Runnable {
         
         long currentTime = System.currentTimeMillis();
         startTime = currentTime;
-        surviveTimeSeconds = 0;
+        // Adjust survive time based on wave (approx 15s per wave) for scaling
+        surviveTimeSeconds = (PlayerData.debugStartWave - 1) * 15;
         
-        upgradeManager.startNewGame();
+        upgradeManager.startNewGame(PlayerData.debugStartLevel);
         upgradeManager.playerDamage = (int)((10 + gameproject.meta.PlayerData.statDamageLevel) * charClass.damageMulti);
-        entityManager.startNewGame(currentTime);
+        entityManager.startNewGame(currentTime, PlayerData.debugStartWave);
         
         if (totalBackgrounds > 0) {
             currentBgKey = "background" + (new java.util.Random().nextInt(totalBackgrounds) + 1);
@@ -140,6 +155,14 @@ public class GamePanel extends JPanel implements Runnable {
         player.resetMovement();
         input.isMouseHolding = false;
         changeState(new WeaponSelectState());
+    }
+
+    public void triggerBreakthroughUpgrade() {
+        upgradeManager.generateBreakthroughOptions(player);
+        player.resetMovement();
+        input.isMouseHolding = false;
+        gameproject.SoundManager.play("levelup");
+        changeState(new gameproject.state.LevelUpState());
     }
 
     public void addScoreAndExp(int amount) {

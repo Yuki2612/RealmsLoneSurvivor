@@ -125,8 +125,12 @@ public class PlayingState implements State {
         g2d.translate(-game.cameraX, -game.cameraY);
 
         for (PassiveSkill skill : game.activeSkills) {
-            if (skill instanceof gameproject.skill.FrostAuraSkill || skill instanceof gameproject.skill.PoisonCloudSkill)
+            if (skill instanceof gameproject.skill.FrostAuraSkill || 
+                skill instanceof gameproject.skill.PoisonCloudSkill ||
+                skill instanceof gameproject.skill.PulseWaveSkill ||
+                skill instanceof gameproject.skill.EnergyShieldSkill) {
                 skill.draw(g, game.player);
+            }
         }
 
         game.vfxManager.draw(g, game.player);

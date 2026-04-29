@@ -12,6 +12,8 @@ import gameproject.skill.Upgrade;
 
 public class SkillsState implements State {
     private List<Upgrade> breakthroughSkills;
+    private int currentPage = 0;
+    private final int SKILLS_PER_PAGE = 6;
     
     public SkillsState() {
         breakthroughSkills = new ArrayList<>();
@@ -31,28 +33,47 @@ public class SkillsState implements State {
             return;
         }
 
+        int maxPages = (int) Math.ceil((double) breakthroughSkills.size() / SKILLS_PER_PAGE);
+
         if (game.input.mouseClicked) {
             int mx = game.input.mouseX;
             int my = game.input.mouseY;
 
+            // Navigation Arrows
+            if (my >= game.screenHeight / 2 - 50 && my <= game.screenHeight / 2 + 50) {
+                // Left Arrow
+                if (mx >= 20 && mx <= 80) {
+                    currentPage = (currentPage - 1 + maxPages) % maxPages;
+                }
+                // Right Arrow
+                else if (mx >= game.screenWidth - 80 && mx <= game.screenWidth - 20) {
+                    currentPage = (currentPage + 1) % maxPages;
+                }
+            }
+
             int columns = 3;
-            int boxW = 200;
-            int boxH = 220;
-            int padding = 40;
-            int startX = (game.screenWidth - (columns * boxW + (columns - 1) * padding)) / 2;
-            int startY = 150;
+            int cardW = 280;
+            int cardH = 200;
+            int gap = 30;
+            int totalGridW = columns * cardW + (columns - 1) * gap;
+            int startX = (game.screenWidth - totalGridW) / 2;
+            int startY = 140;
 
-            for (int i = 0; i < breakthroughSkills.size(); i++) {
-                int row = i / columns;
-                int col = i % columns;
-                int bx = startX + col * (boxW + padding);
-                int by = startY + row * (boxH + padding);
+            int startIndex = currentPage * SKILLS_PER_PAGE;
+            int endIndex = Math.min(startIndex + SKILLS_PER_PAGE, breakthroughSkills.size());
 
-                // Nút Unlock / Upgrade nằm ở phần dưới của Box
-                int btnX = bx + 25;
-                int btnY = by + boxH - 45;
-                int btnW = 150;
-                int btnH = 35;
+            for (int i = startIndex; i < endIndex; i++) {
+                int displayIdx = i - startIndex;
+                int row = displayIdx / columns;
+                int col = displayIdx % columns;
+                int x = startX + col * (cardW + gap);
+                int y = startY + row * (cardH + gap);
+
+                // Nút Upgrade
+                int btnW = 160;
+                int btnH = 40;
+                int btnX = x + cardW / 2 - btnW / 2;
+                int btnY = y + cardH - 60;
 
                 if (mx >= btnX && mx <= btnX + btnW && my >= btnY && my <= btnY + btnH) {
                     Upgrade u = breakthroughSkills.get(i);
@@ -64,13 +85,14 @@ public class SkillsState implements State {
                         if (PlayerData.soulStones >= cost) {
                             PlayerData.soulStones -= cost;
                             PlayerData.skillSoulLevels.put(u, level + 1);
+                            gameproject.SoundManager.play("levelup");
                         }
                     }
                 }
             }
 
             // Nút Back
-            if (mx >= 50 && mx <= 150 && my >= 50 && my <= 90) {
+            if (mx >= 50 && mx <= 170 && my >= 50 && my <= 95) {
                 PlayerData.save();
                 game.changeState(new MenuState());
             }
@@ -81,78 +103,11 @@ public class SkillsState implements State {
 
     @Override
     public void render(GamePanel game, Graphics g) {
-        g.setColor(Color.DARK_GRAY);
-        g.fillRect(0, 0, game.screenWidth, game.screenHeight);
+        int startIndex = currentPage * SKILLS_PER_PAGE;
+        int endIndex = Math.min(startIndex + SKILLS_PER_PAGE, breakthroughSkills.size());
+        List<Upgrade> pageSkills = breakthroughSkills.subList(startIndex, endIndex);
+        int totalPages = (int) Math.ceil((double) breakthroughSkills.size() / SKILLS_PER_PAGE);
 
-        g.setColor(Color.CYAN);
-        g.setFont(FontManager.getFont(40f));
-        g.drawString("SKILL UNLOCKS", game.screenWidth / 2 - 150, 80);
-
-        g.setColor(Color.MAGENTA);
-        g.setFont(FontManager.getFont(20f));
-        g.drawString("Souls: " + PlayerData.soulStones, game.screenWidth - 200, 50);
-
-        int columns = 3;
-        int boxW = 200;
-        int boxH = 220;
-        int padding = 40;
-        int startX = (game.screenWidth - (columns * boxW + (columns - 1) * padding)) / 2;
-        int startY = 150;
-
-        g.setFont(FontManager.getFont(16f));
-        for (int i = 0; i < breakthroughSkills.size(); i++) {
-            int row = i / columns;
-            int col = i % columns;
-            int bx = startX + col * (boxW + padding);
-            int by = startY + row * (boxH + padding);
-
-            Upgrade u = breakthroughSkills.get(i);
-            boolean isUnlocked = true; // First 6 skills are unlocked by default
-            int level = PlayerData.skillSoulLevels.getOrDefault(u, 0);
-            int maxSoulLevel = 10;
-
-            // Box nền
-            g.setColor(new Color(50, 50, 50));
-            g.fillRect(bx, by, boxW, boxH);
-            g.setColor(isUnlocked ? Color.CYAN : Color.GRAY);
-            g.drawRect(bx, by, boxW, boxH);
-
-            // Tên skill
-            g.setColor(Color.WHITE);
-            String name = u.description.split("\\(")[0].trim();
-            g.drawString(name, bx + 15, by + 30);
-
-            // Placeholder ảnh
-            g.setColor(Color.BLACK);
-            g.fillRect(bx + 50, by + 50, 100, 80);
-            g.setColor(Color.WHITE);
-            g.drawString("IMAGE", bx + 78, by + 95);
-
-            // Level / Nút Upgrade
-            int btnX = bx + 25;
-            int btnY = by + boxH - 45;
-            int btnW = 150;
-            int btnH = 35;
-
-            g.setColor(Color.YELLOW);
-            g.drawString("Base Lv: " + level + "/" + maxSoulLevel, bx + 45, by + 155);
-            
-            if (level < maxSoulLevel) {
-                int cost = 50 * (level + 1);
-                if (PlayerData.soulStones >= cost) g.setColor(Color.GREEN);
-                else g.setColor(Color.GRAY);
-                
-                g.drawRect(btnX, btnY, btnW, btnH);
-                g.drawString("Upgrade: " + cost, btnX + 32, btnY + 23);
-            } else {
-                g.setColor(Color.GRAY);
-                g.drawRect(btnX, btnY, btnW, btnH);
-                g.drawString("MAXED", btnX + 48, btnY + 23);
-            }
-        }
-        
-        g.setColor(Color.WHITE);
-        g.drawRect(50, 50, 100, 40);
-        g.drawString("BACK", 70, 75);
+        gameproject.ui.SkillsUI.draw(g, game.screenWidth, game.screenHeight, pageSkills, game.input.mouseX, game.input.mouseY, currentPage, totalPages);
     }
 }

@@ -10,6 +10,14 @@ public class PlayerData {
     public static Set<CharacterClass> unlockedClasses = new HashSet<>();
     public static CharacterClass selectedClass = CharacterClass.MERCENARY;
 
+    public static String getPlayerImageKey() {
+        return "player" + (selectedClass.ordinal() + 1);
+    }
+    
+    // Admin Debug settings (Reset every session or persist as you like, here we keep them static)
+    public static int debugStartWave = 1;
+    public static int debugStartLevel = 1;
+
     public static int statHealthLevel = 0; // 10 level = 1 Heart
     public static int statDamageLevel = 0; // +1 dmg per level
     public static int statSpeedLevel = 0; // +2% speed per level

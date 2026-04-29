@@ -26,6 +26,7 @@ public class Projectile {
     // THÊM: Hỗ trợ đạn nổ cho Pháo thủ
     public boolean isExplosive = false;
     public float explosionRadius = 0;
+    public long expirationTime = 0; // 0 = không hết hạn theo thời gian
 
     public gameproject.entity.Enemy ignoredEnemy = null;
 
@@ -54,6 +55,9 @@ public class Projectile {
 
         float distTraveled = (float) Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2));
         if (distTraveled > maxRange || x < 0 || x > worldWidth || y < 0 || y > worldHeight) {
+            active = false;
+        }
+        if (expirationTime > 0 && System.currentTimeMillis() > expirationTime) {
             active = false;
         }
     }

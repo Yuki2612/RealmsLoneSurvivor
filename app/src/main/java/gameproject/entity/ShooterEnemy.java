@@ -98,14 +98,14 @@ public class ShooterEnemy extends Enemy {
     }
 
     @Override
-    public Projectile shoot() {
+    public ArrayList<Projectile> shoot() {
         if (canShoot) {
             canShoot = false;
             float bulletSpeed = 0.4f + (tier * 0.05f); // Đạn nhanh dần theo tier
             Projectile p = new Projectile(x, y, targetPX, targetPY, bulletSpeed, 800f);
             p.isEnemyBullet = true;
             p.damage = 1;
-            return p;
+            return new ArrayList<>(java.util.List.of(p));
         }
         return null;
     }

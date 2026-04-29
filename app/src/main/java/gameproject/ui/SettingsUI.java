@@ -2,141 +2,179 @@ package gameproject.ui;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.BasicStroke;
 import gameproject.FontManager;
 
 public class SettingsUI {
     public static void draw(Graphics g, int screenWidth, int screenHeight, boolean showDamageText, boolean pendingReset,
             boolean isAdminMode, boolean showAdminInput, String inputStr) {
-        g.setColor(Color.DARK_GRAY);
-        g.fillRect(0, 0, screenWidth, screenHeight);
+        Graphics2D g2d = (Graphics2D) g;
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        // Nền tối với hiệu ứng mờ nhẹ (vignette giả)
+        g2d.setColor(new Color(20, 20, 25));
+        g2d.fillRect(0, 0, screenWidth, screenHeight);
+
+        // Vẽ khung trang trí chính
+        int mainW = 600;
+        int mainH = 650;
+        int mainX = screenWidth / 2 - mainW / 2;
+        int mainY = screenHeight / 2 - mainH / 2;
+        
+        g2d.setColor(new Color(40, 40, 50));
+        g2d.fillRoundRect(mainX, mainY, mainW, mainH, 30, 30);
+        g2d.setColor(new Color(100, 100, 120));
+        g2d.setStroke(new BasicStroke(2));
+        g2d.drawRoundRect(mainX, mainY, mainW, mainH, 30, 30);
 
         // --- Tiêu đề ---
-        g.setColor(Color.WHITE);
-        g.setFont(FontManager.getFont(50f));
-        g.drawString("SETTINGS", screenWidth / 2 - 150, screenHeight / 2 - 150);
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(FontManager.getFont(45f));
+        g2d.drawString("SETTINGS", screenWidth / 2 - 100, mainY + 70);
 
-        g.setFont(FontManager.getFont(20f));
+        // --- SECTION 1: GENERAL ---
+        int sec1Y = mainY + 120;
+        drawSectionHeader(g2d, "GENERAL", mainX + 50, sec1Y);
+        
+        int btnW = 400;
+        int btnH = 50;
+        int btnX = screenWidth / 2 - btnW / 2;
+        int btnY = sec1Y + 30;
 
-        // --- Damage Text Toggle ---
-        int btnX = screenWidth / 2 - 180;
-        int btnY = screenHeight / 2 - 40;
-        g.setColor(Color.WHITE);
-        g.drawRect(btnX, btnY, 450, 50);
-        g.setFont(FontManager.getFont(24f));
-        g.setColor(showDamageText ? Color.GREEN : Color.RED);
-        g.drawString("Damage Text: " + (showDamageText ? "ON" : "OFF"), btnX + 25, btnY + 35);
+        g2d.setColor(new Color(60, 60, 75));
+        g2d.fillRoundRect(btnX, btnY, btnW, btnH, 10, 10);
+        g2d.setColor(showDamageText ? new Color(0, 255, 150) : new Color(255, 80, 80));
+        g2d.drawRoundRect(btnX, btnY, btnW, btnH, 10, 10);
+        
+        g2d.setFont(FontManager.getFont(22f));
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("Damage Numbers", btnX + 30, btnY + 33);
+        g2d.setColor(showDamageText ? Color.GREEN : Color.RED);
+        g2d.drawString(showDamageText ? "ENABLED" : "DISABLED", btnX + 270, btnY + 33);
 
-        g.setFont(FontManager.getFont(20f));
-
-        int adminY = screenHeight / 2 + 50;
+        // --- SECTION 2: ADMIN ---
+        int sec2Y = btnY + 90;
+        drawSectionHeader(g2d, "ADMIN CONSOLE", mainX + 50, sec2Y);
 
         if (isAdminMode) {
-            // --- Admin: +1000 Gold ---
-            int gBtnX = screenWidth / 2 - 200;
-            g.setColor(Color.YELLOW);
-            g.drawRect(gBtnX, adminY, 180, 40);
-            g.drawString("+1000 GOLD", gBtnX + 20, adminY + 28);
+            int gridX = screenWidth / 2 - 210;
+            int gridY = sec2Y + 30;
+            int smallBtnW = 200;
+            int smallBtnH = 45;
 
-            // --- Admin: +100 Souls ---
-            int sBtnX = screenWidth / 2 + 20;
-            g.setColor(Color.MAGENTA);
-            g.drawRect(sBtnX, adminY, 180, 40);
-            g.drawString("+100 SOULS", sBtnX + 25, adminY + 28);
+            // Row 1: Gold & Souls
+            drawAdminButton(g2d, "+1000 GOLD", gridX, gridY, smallBtnW, smallBtnH, Color.YELLOW);
+            drawAdminButton(g2d, "+100 SOULS", gridX + 220, gridY, smallBtnW, smallBtnH, Color.MAGENTA);
+
+            // Row 2: Wave & Level
+            drawAdminButton(g2d, "WAVE: " + gameproject.meta.PlayerData.debugStartWave, gridX, gridY + 60, smallBtnW, smallBtnH, Color.CYAN);
+            drawAdminButton(g2d, "LEVEL: " + gameproject.meta.PlayerData.debugStartLevel, gridX + 220, gridY + 60, smallBtnW, smallBtnH, Color.ORANGE);
         } else if (!showAdminInput) {
-            // --- Nút mở Admin Mode ---
-            int aBtnX = screenWidth / 2 - 120;
-            g.setColor(Color.DARK_GRAY);
-            g.fillRect(aBtnX, adminY, 240, 45);
-            g.setColor(Color.CYAN);
-            g.drawRect(aBtnX, adminY, 240, 45);
-            g.drawString("UNLOCK ADMIN MODE", aBtnX + 15, adminY + 30);
+            int aBtnX = screenWidth / 2 - 150;
+            int aBtnY = sec2Y + 40;
+            g2d.setColor(new Color(30, 80, 100));
+            g2d.fillRoundRect(aBtnX, aBtnY, 300, 50, 15, 15);
+            g2d.setColor(Color.CYAN);
+            g2d.drawRoundRect(aBtnX, aBtnY, 300, 50, 15, 15);
+            g2d.setFont(FontManager.getFont(20f));
+            g2d.drawString("UNLOCK ADMIN TOOLS", aBtnX + 35, aBtnY + 33);
         } else {
-            // --- TextBox nhập Admin Mode ---
-            g.setColor(Color.WHITE);
-            g.drawString("Enter Password:", screenWidth / 2 - 220, adminY + 30);
+            int boxX = screenWidth / 2 - 150;
+            int boxY = sec2Y + 30;
+            g2d.setColor(Color.WHITE);
+            g2d.setFont(FontManager.getFont(18f));
+            g2d.drawString("Enter Admin Key:", boxX, boxY + 15);
+            
+            g2d.setColor(Color.BLACK);
+            g2d.fillRoundRect(boxX, boxY + 25, 300, 45, 10, 10);
+            g2d.setColor(Color.CYAN);
+            g2d.drawRoundRect(boxX, boxY + 25, 300, 45, 10, 10);
 
-            int boxX = screenWidth / 2 - 40;
-            g.setColor(Color.BLACK);
-            g.fillRect(boxX, adminY, 200, 45);
-            g.setColor(Color.CYAN);
-            g.drawRect(boxX, adminY, 200, 45);
-
-            // Mask password if preferred, here we just show the string or masked
-            String displayStr = inputStr;
-            if (displayStr.length() > 6) {
-                displayStr = displayStr.substring(displayStr.length() - 6);
-            }
-            // Mật khẩu che thành dấu *
-            String masked = "*".repeat(displayStr.length());
-            g.drawString(masked, boxX + 10, adminY + 30);
+            String masked = "*".repeat(Math.min(inputStr.length(), 10));
+            g2d.setFont(FontManager.getFont(24f));
+            g2d.drawString(masked, boxX + 10, boxY + 58);
         }
 
-        // --- Reset Button ---
-        int rBtnX = screenWidth / 2 - 120;
-        int rBtnY = screenHeight / 2 + 120;
-        g.setColor(new java.awt.Color(200, 50, 50));
-        g.fillRect(rBtnX, rBtnY, 240, 45);
-        g.setColor(Color.WHITE);
-        g.drawRect(rBtnX, rBtnY, 240, 45);
-        g.setFont(FontManager.getFont(22f));
-        g.drawString("RESET PROGRESS", rBtnX + 15, rBtnY + 31);
+        // --- SECTION 3: DATA ---
+        int sec3Y = mainY + 450;
+        drawSectionHeader(g2d, "DATA MANAGEMENT", mainX + 50, sec3Y);
 
-        // --- Gợi ý ---
-        g.setColor(new java.awt.Color(150, 150, 150));
-        g.setFont(FontManager.getFont(14f));
-        g.drawString("(Resets Gold, Souls & all stat/skill upgrades)", screenWidth / 2 - 195, rBtnY + 62);
+        int rBtnX = screenWidth / 2 - 150;
+        int rBtnY = sec3Y + 30;
+        g2d.setColor(new Color(80, 20, 20));
+        g2d.fillRoundRect(rBtnX, rBtnY, 300, 50, 10, 10);
+        g2d.setColor(new Color(255, 50, 50));
+        g2d.drawRoundRect(rBtnX, rBtnY, 300, 50, 10, 10);
+        g2d.setFont(FontManager.getFont(20f));
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("RESET ALL PROGRESS", rBtnX + 40, rBtnY + 33);
+        
+        g2d.setFont(FontManager.getFont(14f));
+        g2d.setColor(new Color(150, 150, 150));
+        g2d.drawString("(Irreversible: Gold, Souls, Stats)", rBtnX + 45, rBtnY + 75);
 
-        g.setColor(Color.WHITE);
-        g.setFont(FontManager.getFont(20f));
-        g.drawString("Press ESC to Return", screenWidth / 2 - 150, screenHeight / 2 + 220);
+        // Footer
+        g2d.setFont(FontManager.getFont(18f));
+        g2d.setColor(new Color(200, 200, 200));
+        g2d.drawString("Press ESC to Save & Return", screenWidth / 2 - 130, mainY + mainH - 30);
 
-        // ==========================================================
         // --- Overlay xác nhận Reset ---
-        // ==========================================================
         if (pendingReset) {
-            // Nền mờ
-            g.setColor(new java.awt.Color(0, 0, 0, 200));
-            g.fillRect(0, 0, screenWidth, screenHeight);
-
-            // Hộp xác nhận
-            int boxW = 500, boxH = 220;
-            int boxX = screenWidth / 2 - boxW / 2;
-            int boxY = screenHeight / 2 - boxH / 2 - 20;
-            g.setColor(new java.awt.Color(40, 20, 20));
-            g.fillRect(boxX, boxY, boxW, boxH);
-            g.setColor(new java.awt.Color(200, 50, 50));
-            g.drawRect(boxX, boxY, boxW, boxH);
-
-            // Tiêu đề
-            g.setColor(Color.RED);
-            g.setFont(FontManager.getFont(28f));
-            g.drawString("⚠  CONFIRM RESET", boxX + 105, boxY + 50);
-
-            // Mô tả
-            g.setColor(Color.WHITE);
-            g.setFont(FontManager.getFont(17f));
-            g.drawString("This will reset: Gold, Souls,", boxX + 110, boxY + 90);
-            g.drawString("all Stat levels & Skill soul upgrades.", boxX + 75, boxY + 115);
-            g.setColor(new java.awt.Color(150, 255, 150));
-            g.drawString("Default unlocked skills stay unlocked.", boxX + 83, boxY + 138);
-
-            // Nút YES
-            int yesX = screenWidth / 2 - 180;
-            int yesY = screenHeight / 2 + 60;
-            g.setColor(new java.awt.Color(180, 40, 40));
-            g.fillRect(yesX, yesY, 140, 50);
-            g.setColor(Color.WHITE);
-            g.drawRect(yesX, yesY, 140, 50);
-            g.setFont(FontManager.getFont(22f));
-            g.drawString("YES, RESET", yesX + 8, yesY + 33);
-
-            // Nút NO
-            int noX = screenWidth / 2 + 40;
-            g.setColor(new java.awt.Color(40, 120, 40));
-            g.fillRect(noX, yesY, 140, 50);
-            g.setColor(Color.WHITE);
-            g.drawRect(noX, yesY, 140, 50);
-            g.drawString("CANCEL", noX + 22, yesY + 33);
+            drawResetOverlay(g2d, screenWidth, screenHeight);
         }
     }
+
+    private static void drawSectionHeader(Graphics2D g2d, String text, int x, int y) {
+        g2d.setFont(FontManager.getFont(16f));
+        g2d.setColor(new Color(180, 180, 200));
+        g2d.drawString(text, x, y);
+        g2d.setStroke(new BasicStroke(1));
+        g2d.drawLine(x, y + 8, x + 500, y + 8);
+    }
+
+    private static void drawAdminButton(Graphics2D g2d, String text, int x, int y, int w, int h, Color accent) {
+        g2d.setColor(new Color(50, 50, 60));
+        g2d.fillRoundRect(x, y, w, h, 8, 8);
+        g2d.setColor(accent);
+        g2d.drawRoundRect(x, y, w, h, 8, 8);
+        g2d.setFont(FontManager.getFont(18f));
+        g2d.drawString(text, x + 20, y + 28);
+    }
+
+    private static void drawResetOverlay(Graphics2D g2d, int sw, int sh) {
+        g2d.setColor(new Color(0, 0, 0, 220));
+        g2d.fillRect(0, 0, sw, sh);
+
+        int bw = 500, bh = 250;
+        int bx = sw / 2 - bw / 2;
+        int by = sh / 2 - bh / 2;
+
+        g2d.setColor(new Color(40, 10, 10));
+        g2d.fillRoundRect(bx, by, bw, bh, 20, 20);
+        g2d.setColor(Color.RED);
+        g2d.drawRoundRect(bx, by, bw, bh, 20, 20);
+
+        g2d.setFont(FontManager.getFont(30f));
+        g2d.drawString("⚠ DANGER ZONE", bx + 120, by + 60);
+        
+        g2d.setFont(FontManager.getFont(18f));
+        g2d.setColor(Color.WHITE);
+        g2d.drawString("Are you sure you want to wipe all data?", bx + 80, by + 110);
+        g2d.drawString("This cannot be undone.", bx + 150, by + 135);
+
+        // Buttons
+        int btnW = 140, btnH = 45;
+        g2d.setColor(new Color(150, 30, 30));
+        g2d.fillRoundRect(sw / 2 - 160, by + 170, btnW, btnH, 10, 10);
+        g2d.setColor(new Color(30, 120, 30));
+        g2d.fillRoundRect(sw / 2 + 20, by + 170, btnW, btnH, 10, 10);
+
+        g2d.setColor(Color.WHITE);
+        g2d.setFont(FontManager.getFont(20f));
+        g2d.drawString("YES, WIPE", sw / 2 - 142, by + 200);
+        g2d.drawString("CANCEL", sw / 2 + 50, by + 200);
+    }
 }
+

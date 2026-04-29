@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 
 import gameproject.entity.Enemy;
+import gameproject.meta.PlayerData;
 
 public class VFXManager {
 
@@ -229,7 +230,8 @@ public class VFXManager {
 
         // 1. Dash afterimages (vẽ trước player)
         for (DashAfterimage a : afterimages) {
-            java.awt.image.BufferedImage img = ImageManager.get("player");
+            java.awt.image.BufferedImage img = ImageManager.get(PlayerData.getPlayerImageKey());
+            if (img == null) img = ImageManager.get("player"); // Fallback
             if (img != null) {
                 g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.25f));
                 g2d.drawImage(img, (int) a.x - 10, (int) a.y - 20, 45, 45, null);

@@ -12,6 +12,9 @@ import gameproject.skill.FrostAuraSkill;
 import gameproject.skill.ExplosiveCorpseSkill;
 import gameproject.skill.VampirismSkill;
 import gameproject.skill.PoisonCloudSkill;
+import gameproject.skill.EnergyShieldSkill;
+import gameproject.skill.MeteorStrikeSkill;
+import gameproject.skill.PulseWaveSkill;
 import gameproject.weapon.Weapon;
 
 public class UpgradeManager {
@@ -26,12 +29,22 @@ public class UpgradeManager {
     // Lưu 3 thẻ nâng cấp hiện tại trên màn hình
     public Upgrade[] currentUpgradeOptions;
 
-    public void startNewGame() {
+    public void startNewGame(int startingLevel) {
         playerLevel = 1;
         currentExp = 0;
         expToNextLevel = 100;
         playerDamage = 10 + gameproject.meta.PlayerData.statDamageLevel;
         bulletSpeedMulti = 1.0f;
+
+        if (startingLevel > 1) {
+            // Tính toán tổng EXP cần thiết để đạt đến level mong muốn
+            int totalExpNeeded = 0;
+            for (int i = 1; i < startingLevel; i++) {
+                totalExpNeeded += (int) (100 * Math.pow(1.25, i - 1));
+            }
+            // Gán EXP vào. Khi game bắt đầu, processLevelUp sẽ tự động kích hoạt giao diện chọn thẻ liên tục.
+            currentExp = totalExpNeeded;
+        }
     }
 
     public void addExp(int amount) {
@@ -56,31 +69,8 @@ public class UpgradeManager {
     }
 
     private void generateOptions(Player player) {
-        // Cứ mỗi 3 cấp sẽ cho bốc thẻ Breakthrough
         if (playerLevel % 3 == 0) {
-            List<Upgrade> owned = player.getOwnedBreakthroughs();
-            List<Upgrade> options = new ArrayList<>();
-            for (Upgrade u : owned) {
-                if (player.getUpgradeLevel(u) < u.maxLevel)
-                    options.add(u);
-            }
-
-            if (owned.size() < 3) {
-                List<Upgrade> unowned = new ArrayList<>();
-                for (Upgrade u : Upgrade.values()) {
-                    if (u.isBreakthrough && !owned.contains(u)) {
-                        unowned.add(u);
-                    }
-                }
-                Collections.shuffle(unowned);
-                for (Upgrade u : unowned) {
-                    if (options.size() < 3)
-                        options.add(u);
-                }
-            }
-            while (options.size() < 3)
-                options.add(Upgrade.SHIELD); // Fallback an toàn
-            currentUpgradeOptions = new Upgrade[] { options.get(0), options.get(1), options.get(2) };
+            generateBreakthroughOptions(player);
         } else {
             // Cấp bình thường sẽ bốc các thẻ tăng chỉ số
             List<Upgrade> normals = new ArrayList<>();
@@ -95,7 +85,41 @@ public class UpgradeManager {
         }
     }
 
-    // Áp dụng thẻ nâng cấp khi người chơi chọn
+    public void generateBreakthroughOptions(Player player) {
+        List<Upgrade> owned = player.getOwnedBreakthroughs();
+        List<Upgrade> allValidOptions = new ArrayList<>();
+
+        // 1. Thêm các đột phá đã sở hữu mà chưa đạt cấp tối đa
+        for (Upgrade u : owned) {
+            if (player.getUpgradeLevel(u) < u.maxLevel)
+                allValidOptions.add(u);
+        }
+
+        // 2. Nếu chưa đủ 5 loại đột phá, thêm các loại chưa sở hữu vào danh sách lựa chọn
+        if (owned.size() < 5) {
+            for (Upgrade u : Upgrade.values()) {
+                if (u.isBreakthrough && !owned.contains(u)) {
+                    allValidOptions.add(u);
+                }
+            }
+        }
+
+        // 3. Xáo trộn toàn bộ để đảm bảo tính ngẫu nhiên (không ưu tiên cái đã có lên slot 1)
+        Collections.shuffle(allValidOptions);
+
+        List<Upgrade> options = new ArrayList<>();
+        for (int i = 0; i < Math.min(3, allValidOptions.size()); i++) {
+            options.add(allValidOptions.get(i));
+        }
+
+        // 4. Fallback an toàn nếu không có đủ 3 lựa chọn
+        while (options.size() < 3)
+            options.add(Upgrade.SHIELD);
+
+        currentUpgradeOptions = new Upgrade[] { options.get(0), options.get(1), options.get(2) };
+    }
+
+    // Khi người chơi chọn 1 thẻ nâng cấp khi người chơi chọn
     public void applyUpgrade(Upgrade upgrade, Player player, List<PassiveSkill> activeSkills, Weapon currentWeapon) {
         player.levelUpUpgrade(upgrade);
 
@@ -122,6 +146,12 @@ public class UpgradeManager {
                     activeSkills.add(new ExplosiveCorpseSkill());
                 else if (upgrade == Upgrade.POISON_CLOUD)
                     activeSkills.add(new PoisonCloudSkill());
+                else if (upgrade == Upgrade.ENERGY_SHIELD)
+                    activeSkills.add(new EnergyShieldSkill());
+                else if (upgrade == Upgrade.METEOR_STRIKE)
+                    activeSkills.add(new MeteorStrikeSkill());
+                else if (upgrade == Upgrade.PULSE_WAVE)
+                    activeSkills.add(new PulseWaveSkill());
             }
         } else {
             switch (upgrade) {

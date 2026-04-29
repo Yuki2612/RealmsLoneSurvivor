@@ -18,21 +18,20 @@ public class EntityManager {
     public ArrayList<Enemy> enemies = new ArrayList<>();
     public ArrayList<Projectile> projectiles = new ArrayList<>();
     public ArrayList<HeartDrop> heartDrops = new ArrayList<>();
-
-    public Rectangle weaponChest = null;
-    public boolean hasDroppedWeapon = false;
+    public ArrayList<ChestDrop> weaponChests = new ArrayList<>();
+    public int bossesKilled = 0;
 
     private long lastEnemySpawnTime;
     public int waveCount = 0;
     private long currentSpawnInterval = 10000;
 
-    public void startNewGame(long currentTime) {
+    public void startNewGame(long currentTime, int startingWave) {
         enemies.clear();
         projectiles.clear();
         heartDrops.clear();
-        weaponChest = null;
-        hasDroppedWeapon = false;
-        waveCount = 0;
+        weaponChests.clear();
+        bossesKilled = 0;
+        waveCount = startingWave - 1;
         currentSpawnInterval = 10000;
         lastEnemySpawnTime = currentTime - currentSpawnInterval;
     }
@@ -74,6 +73,8 @@ public class EntityManager {
 
         // 3. XỬ LÝ ĐẠN (CẢ ĐẠN TA VÀ ĐẠN ĐỊCH)
         ArrayList<Projectile> pendingProjectiles = new ArrayList<>();
+        ArrayList<Projectile> newEnemyProjectiles = new ArrayList<>();
+        ArrayList<Enemy> newEnemies = new ArrayList<>();
         Iterator<Projectile> pIt = projectiles.iterator();
         while (pIt.hasNext()) {
             Projectile p = pIt.next();
@@ -182,7 +183,6 @@ public class EntityManager {
         projectiles.addAll(pendingProjectiles);
 
         // 4. XỬ LÝ QUÁI VẬT DI CHUYỂN, BẮN ĐẠN VÀ VA CHẠM
-        ArrayList<Projectile> newEnemyProjectiles = new ArrayList<>();
         float speedMultiplier = 1.0f + (surviveTimeSeconds / 60) * 0.12f;
         Iterator<Enemy> eIt = enemies.iterator();
         while (eIt.hasNext()) {
@@ -197,9 +197,10 @@ public class EntityManager {
                             enemy.getY() + enemy.size / 2f, currentTime,
                             enemy.isBoss ? new java.awt.Color(255, 80, 80) : enemy.color);
 
-                    if (enemy.isBoss && !hasDroppedWeapon) {
-                        weaponChest = new Rectangle((int) enemy.getX(), (int) enemy.getY(), 40, 40);
-                        hasDroppedWeapon = true;
+                    if (enemy.isBoss) {
+                        bossesKilled++;
+                        boolean isRare = (bossesKilled == 1);
+                        weaponChests.add(new ChestDrop(enemy.getX(), enemy.getY(), isRare, currentTime + 300000)); // Hết hạn sau 5 phút
                     }
                     if (enemy.isBoss) {
                         PlayerData.gold += 50;
@@ -236,10 +237,16 @@ public class EntityManager {
                 enemy.update(player.getX(), player.getY(), currentEnemySpeedMulti, enemies, GamePanel.WORLD_WIDTH, GamePanel.WORLD_HEIGHT);
             }
 
-            // Gom \u0111\u1ea1n do qu\u00e1i b\u1eafn ra (n\u1ebfu c\u00f3)
-            Projectile enemyProj = enemy.shoot();
-            if (enemyProj != null) {
-                newEnemyProjectiles.add(enemyProj);
+            // Gom đạn do quái bắn ra (nếu có)
+            java.util.List<Projectile> enemyProjs = enemy.shoot();
+            if (enemyProjs != null) {
+                newEnemyProjectiles.addAll(enemyProjs);
+            }
+
+            // Gom quái do Boss triệu hồi (nếu có)
+            java.util.List<Enemy> summoned = enemy.summon();
+            if (summoned != null) {
+                newEnemies.addAll(summoned);
             }
 
             // Quái va chạm trực tiếp với Player
@@ -255,10 +262,11 @@ public class EntityManager {
                 break;
             }
 
-            // isDying qu\u1ea3n l\u00fd \u1edf \u0111\u1ea7u v\u00f2ng l\u1eb7p v\u1edbi continue, n\u00ean kh\u00f4ng c\u1ea7n check th\u00eam \u1edf \u0111\u00e2y
+            // isDying quản lý ở đầu vòng lặp với continue, nên không cần check thêm ở đây
         }
         // Đưa toàn bộ đạn mới của địch vào luồng đạn chính
         projectiles.addAll(newEnemyProjectiles);
+        enemies.addAll(newEnemies);
 
         // 5. XỬ LÝ VẬT PHẨM (MÁU, RƯƠNG)
         Iterator<HeartDrop> hIt = heartDrops.iterator();
@@ -284,9 +292,21 @@ public class EntityManager {
             }
         }
 
-        if (weaponChest != null && player.getBounds().intersects(weaponChest)) {
-            weaponChest = null;
-            panel.openWeaponSelect();
+        Iterator<ChestDrop> cIt = weaponChests.iterator();
+        while (cIt.hasNext()) {
+            ChestDrop chest = cIt.next();
+            if (currentTime > chest.expirationTime) {
+                cIt.remove();
+                continue;
+            }
+            if (player.getBounds().intersects(chest.getBounds())) {
+                if (chest.isRare) {
+                    panel.openWeaponSelect();
+                } else {
+                    panel.triggerBreakthroughUpgrade();
+                }
+                cIt.remove();
+            }
         }
     }
 
@@ -370,11 +390,16 @@ public class EntityManager {
     }
 
     public void draw(Graphics g) {
-        if (weaponChest != null) {
-            g.setColor(System.currentTimeMillis() % 400 < 200 ? Color.ORANGE : Color.YELLOW);
-            g.fillRect(weaponChest.x, weaponChest.y, weaponChest.width, weaponChest.height);
-            g.setColor(Color.WHITE);
-            g.drawString("WEAPON", weaponChest.x - 15, weaponChest.y - 5);
+        for (ChestDrop chest : weaponChests) {
+            java.awt.image.BufferedImage chestImg = gameproject.ImageManager.get(chest.isRare ? "chest2" : "chest1");
+            if (chestImg != null) {
+                g.drawImage(chestImg, (int) chest.x, (int) chest.y, 40, 40, null);
+            } else {
+                g.setColor(chest.isRare ? java.awt.Color.MAGENTA : java.awt.Color.ORANGE);
+                g.fillRect((int) chest.x, (int) chest.y, 40, 40);
+                g.setColor(java.awt.Color.WHITE);
+                g.drawString(chest.isRare ? "RARE" : "CHEST", (int) chest.x - 5, (int) chest.y - 5);
+            }
         }
 
         for (HeartDrop hd : heartDrops) {

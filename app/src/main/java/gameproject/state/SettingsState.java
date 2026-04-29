@@ -38,57 +38,70 @@ public class SettingsState implements State {
             int mx = game.input.mouseX;
             int my = game.input.mouseY;
 
+            int sw = game.screenWidth;
+            int sh = game.screenHeight;
+            int mainY = sh / 2 - 325;
+
             if (!pendingReset) {
-                // --- Nút Damage Text ---
-                int btnX = game.screenWidth / 2 - 180;
-                int btnY = game.screenHeight / 2 - 40;
-                if (mx >= btnX && mx <= btnX + 450 && my >= btnY && my <= btnY + 50) {
+                // --- Section 1: GENERAL (Damage Numbers) ---
+                int btnX = sw / 2 - 200;
+                int btnY = mainY + 150;
+                if (mx >= btnX && mx <= btnX + 400 && my >= btnY && my <= btnY + 50) {
                     game.vfxManager.showDamageText = !game.vfxManager.showDamageText;
                 }
 
-                // --- Admin logic ---
-                int adminY = game.screenHeight / 2 + 50;
-                
+                // --- Section 2: ADMIN ---
+                int sec2Y = mainY + 240;
                 if (isAdminMode) {
-                    // --- Nút Admin: +1000 Gold ---
-                    int gBtnX = game.screenWidth / 2 - 200;
-                    if (mx >= gBtnX && mx <= gBtnX + 180 && my >= adminY && my <= adminY + 40) {
+                    int gridX = sw / 2 - 210;
+                    int gridY = sec2Y + 30;
+                    int smallW = 200, smallH = 45;
+
+                    // Gold
+                    if (mx >= gridX && mx <= gridX + smallW && my >= gridY && my <= gridY + smallH) {
                         gameproject.meta.PlayerData.gold += 1000;
                     }
-
-                    // --- Nút Admin: +100 Souls ---
-                    int sBtnX = game.screenWidth / 2 + 20;
-                    if (mx >= sBtnX && mx <= sBtnX + 180 && my >= adminY && my <= adminY + 40) {
+                    // Souls
+                    if (mx >= gridX + 220 && mx <= gridX + 220 + smallW && my >= gridY && my <= gridY + smallH) {
                         gameproject.meta.PlayerData.soulStones += 100;
                     }
+                    // Wave
+                    if (mx >= gridX && mx <= gridX + smallW && my >= gridY + 60 && my <= gridY + 60 + smallH) {
+                        gameproject.meta.PlayerData.debugStartWave = (gameproject.meta.PlayerData.debugStartWave % 50) + 1;
+                    }
+                    // Level
+                    if (mx >= gridX + 220 && mx <= gridX + 220 + smallW && my >= gridY + 60 && my <= gridY + 60 + smallH) {
+                        gameproject.meta.PlayerData.debugStartLevel = (gameproject.meta.PlayerData.debugStartLevel % 100) + 1;
+                    }
                 } else if (!showAdminInput) {
-                    // --- Nút mở Admin Mode ---
-                    int aBtnX = game.screenWidth / 2 - 120;
-                    if (mx >= aBtnX && mx <= aBtnX + 240 && my >= adminY && my <= adminY + 45) {
+                    int aBtnX = sw / 2 - 150;
+                    int aBtnY = sec2Y + 40;
+                    if (mx >= aBtnX && mx <= aBtnX + 300 && my >= aBtnY && my <= aBtnY + 50) {
                         showAdminInput = true;
                         game.input.typedKeySequence = "";
                     }
                 }
 
-                // --- Nút Reset (mở hộp xác nhận) ---
-                int rBtnX = game.screenWidth / 2 - 120;
-                int rBtnY = game.screenHeight / 2 + 120;
-                if (mx >= rBtnX && mx <= rBtnX + 240 && my >= rBtnY && my <= rBtnY + 45) {
+                // --- Section 3: DATA (Reset) ---
+                int rBtnX = sw / 2 - 150;
+                int rBtnY = mainY + 480;
+                if (mx >= rBtnX && mx <= rBtnX + 300 && my >= rBtnY && my <= rBtnY + 50) {
                     pendingReset = true;
                 }
 
             } else {
-                // --- Hộp xác nhận: YES ---
-                int yesX = game.screenWidth / 2 - 180;
-                int yesY = game.screenHeight / 2 + 60;
-                if (mx >= yesX && mx <= yesX + 140 && my >= yesY && my <= yesY + 50) {
+                int by = sh / 2 - 125;
+                int btnW = 140, btnH = 45;
+                // --- YES ---
+                int yesX = sw / 2 - 160;
+                int yesY = by + 170;
+                if (mx >= yesX && mx <= yesX + btnW && my >= yesY && my <= yesY + btnH) {
                     performReset();
                     pendingReset = false;
                 }
-
-                // --- Hộp xác nhận: NO ---
-                int noX = game.screenWidth / 2 + 40;
-                if (mx >= noX && mx <= noX + 140 && my >= yesY && my <= yesY + 50) {
+                // --- NO ---
+                int noX = sw / 2 + 20;
+                if (mx >= noX && mx <= noX + btnW && my >= yesY && my <= yesY + btnH) {
                     pendingReset = false;
                 }
             }
@@ -106,7 +119,9 @@ public class SettingsState implements State {
         gameproject.meta.PlayerData.statDashLevel = 0;
         gameproject.meta.PlayerData.statCritLevel = 0;
         gameproject.meta.PlayerData.statCooldownLevel = 0;
-        gameproject.meta.PlayerData.skillSoulLevels.clear(); // Reset soul multiplier về 0, skill vẫn mở khóa
+        gameproject.meta.PlayerData.skillSoulLevels.clear();
+        gameproject.meta.PlayerData.debugStartWave = 1;
+        gameproject.meta.PlayerData.debugStartLevel = 1;
         gameproject.meta.PlayerData.save();
     }
 

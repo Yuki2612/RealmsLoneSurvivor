@@ -96,7 +96,7 @@ public class CannoneerEnemy extends Enemy {
     }
 
     @Override
-    public Projectile shoot() {
+    public java.util.List<Projectile> shoot() {
         if (canShoot) {
             canShoot = false;
             // Đạn bay chậm
@@ -105,7 +105,7 @@ public class CannoneerEnemy extends Enemy {
             p.isExplosive = true; // Cờ đạn nổ
             p.explosionRadius = 40 + (tier * 10); // Bán kính nổ tăng theo tier
             p.damage = 1;
-            return p;
+            return java.util.List.of(p);
         }
         return null;
     }
