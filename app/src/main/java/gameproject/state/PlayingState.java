@@ -31,17 +31,29 @@ public class PlayingState implements State {
         game.player.update(game);
 
         // --- CẬP NHẬT CAMERA (Hoàn trả Snapping - Phản hồi tức thì) ---
-        // Gán trực tiếp nhưng làm tròn số nguyên để camera bám khít nhân vật không độ trễ
+        // Gán trực tiếp nhưng làm tròn số nguyên để camera bám khít nhân vật không độ
+        // trễ
         game.cameraX = Math.round(game.player.getX() - game.screenWidth / 2f + game.player.getBounds().width / 2f);
         game.cameraY = Math.round(game.player.getY() - game.screenHeight / 2f + game.player.getBounds().height / 2f);
 
         // Giới hạn camera không trượt ra ngoài bản đồ
-        if (game.cameraX < 0) game.cameraX = 0;
-        if (game.cameraY < 0) game.cameraY = 0;
-        if (game.cameraX > GamePanel.WORLD_WIDTH - game.screenWidth) game.cameraX = GamePanel.WORLD_WIDTH - game.screenWidth;
-        if (game.cameraY > GamePanel.WORLD_HEIGHT - game.screenHeight) game.cameraY = GamePanel.WORLD_HEIGHT - game.screenHeight;
+        if (game.cameraX < 0)
+            game.cameraX = 0;
+        if (game.cameraY < 0)
+            game.cameraY = 0;
+        if (game.cameraX > GamePanel.WORLD_WIDTH - game.screenWidth)
+            game.cameraX = GamePanel.WORLD_WIDTH - game.screenWidth;
+        if (game.cameraY > GamePanel.WORLD_HEIGHT - game.screenHeight)
+            game.cameraY = GamePanel.WORLD_HEIGHT - game.screenHeight;
 
         game.vfxManager.update(currentTime);
+
+        // Combo Sparkles (Tier 1+)
+        int tier = game.player.getComboManager().getTier();
+        if (tier >= 1) {
+            game.vfxManager.spawnComboSparkles(game.player.getX() + 12, game.player.getY() + 12, currentTime,
+                    game.player.getComboManager().getComboColor(), tier);
+        }
 
         // Dash afterimage
         if (game.player.isDashing()) {
@@ -51,10 +63,12 @@ public class PlayingState implements State {
         game.entityManager.update(game.player, game.vfxManager, game.activeSkills, game.screenWidth, game.screenHeight,
                 currentTime, surviveTimeSeconds, game);
 
-        if (game.input.isMouseHolding && game.currentWeapon.isAutomatic && game.currentWeapon.canShoot(currentTime)) {
+        float fireRateBonus = game.player.getComboManager().getFireRateBonus();
+        if (game.input.isMouseHolding && game.currentWeapon.isAutomatic
+                && game.currentWeapon.canShoot(currentTime, fireRateBonus)) {
             triggerShoot(game, currentTime);
         } else if (game.input.mouseClicked && !game.currentWeapon.isAutomatic
-                && game.currentWeapon.canShoot(currentTime)) {
+                && game.currentWeapon.canShoot(currentTime, fireRateBonus)) {
             triggerShoot(game, currentTime);
         }
 
@@ -112,9 +126,11 @@ public class PlayingState implements State {
             int bgHeight = bg.getHeight();
             // Lặp background vô tận theo camera
             int startX = (int) -(game.cameraX % bgWidth);
-            if (startX > 0) startX -= bgWidth;
+            if (startX > 0)
+                startX -= bgWidth;
             int startY = (int) -(game.cameraY % bgHeight);
-            if (startY > 0) startY -= bgHeight;
+            if (startY > 0)
+                startY -= bgHeight;
 
             for (int x = startX; x < game.screenWidth; x += bgWidth) {
                 for (int y = startY; y < game.screenHeight; y += bgHeight) {
@@ -140,29 +156,32 @@ public class PlayingState implements State {
         }
 
         for (PassiveSkill skill : game.activeSkills) {
-            if (skill instanceof gameproject.skill.FrostAuraSkill || 
-                skill instanceof gameproject.skill.PoisonCloudSkill ||
-                skill instanceof gameproject.skill.PulseWaveSkill ||
-                skill instanceof gameproject.skill.EnergyShieldSkill) {
+            if (skill instanceof gameproject.skill.FrostAuraSkill ||
+                    skill instanceof gameproject.skill.PoisonCloudSkill ||
+                    skill instanceof gameproject.skill.PulseWaveSkill ||
+                    skill instanceof gameproject.skill.EnergyShieldSkill) {
                 skill.draw(g, game.player);
             }
         }
 
         game.vfxManager.draw(g, game.player);
-        
+
         // 1. Vẽ vật phẩm dưới đất (Rương, Tim, Soul)
         game.entityManager.drawGroundItems(g);
-        
+
         // 2. --- THUẬT TOÁN Y-SORTING (Z-INDEX) ---
         // Gom tất cả các đối tượng có độ sâu vào một danh sách
         java.util.List<gameproject.Renderable> renderList = new java.util.ArrayList<>();
         renderList.add(game.player);
-        renderList.addAll(game.entityManager.enemies);
+        synchronized (game.entityManager.enemies) {
+            renderList.addAll(game.entityManager.enemies);
+        }
         renderList.addAll(game.mapManager.getAllObstacles());
-        
+
         // Sắp xếp theo tọa độ chân (Bottom Y)
-        java.util.Collections.sort(renderList, java.util.Comparator.comparingDouble(gameproject.Renderable::getBottomY));
-        
+        java.util.Collections.sort(renderList,
+                java.util.Comparator.comparingDouble(gameproject.Renderable::getBottomY));
+
         // 3. Vẽ các đối tượng đã được sắp xếp
         for (gameproject.Renderable r : renderList) {
             r.render(g2d);
@@ -175,7 +194,7 @@ public class PlayingState implements State {
             if (skill instanceof gameproject.skill.OrbitingOrbsSkill)
                 skill.draw(g, game.player);
         }
-        
+
         // 5. VẼ MÁI NHÀ (Trên cùng) - Đồng bộ hóa để tránh CME
         synchronized (game.buildings) {
             for (gameproject.environment.Building b : game.buildings) {
@@ -190,8 +209,8 @@ public class PlayingState implements State {
         // --- HUD ---
         gameproject.ui.HUD.draw(g, game, game.player, game.entityManager.enemies);
 
-        // Overlay toàn màn hình (flash đỏ, wave banner) — sau cùng
+        // Overlay toàn màn hình (flash đỏ, wave banner, combo vignette) — sau cùng
         long now = System.currentTimeMillis();
-        game.vfxManager.drawOverlays(g, game.screenWidth, game.screenHeight, now);
+        game.vfxManager.drawOverlays(g, game.screenWidth, game.screenHeight, now, game.player);
     }
 }

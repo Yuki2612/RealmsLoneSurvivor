@@ -42,7 +42,7 @@ public class TankBoss extends Enemy {
     }
 
     private void triggerSummon() {
-        int tier = Math.min(5, 1 + surviveTime / 120); // Tăng cấp độ quái mỗi 2 phút
+        int tier = Math.min(5, 1 + surviveTime / 60); // Tăng cấp độ quái mỗi 2 phút
         // Triệu hồi đa dạng chủng loại quái tương xứng với giai đoạn
         spawnedEnemies.add(new NormalEnemy(x - 40, y, tier, surviveTime));
         spawnedEnemies.add(new ShooterEnemy(x + 40, y, tier, surviveTime));

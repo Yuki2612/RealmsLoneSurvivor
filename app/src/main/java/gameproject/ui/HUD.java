@@ -18,7 +18,7 @@ public class HUD {
         int score = game.score;
         int waveCount = game.entityManager.waveCount;
         int playerDamage = game.upgradeManager.playerDamage;
-        long fireRate = game.currentWeapon.getActualCooldown();
+        long fireRate = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus());
         int currentExp = game.upgradeManager.currentExp;
         int expToNextLevel = game.upgradeManager.expToNextLevel;
         int playerLevel = game.upgradeManager.playerLevel;
@@ -171,6 +171,73 @@ public class HUD {
                 }
             }
         }
+
+        // --- COMBO UI ---
+        gameproject.ComboManager cm = player.getComboManager();
+        if (cm.getComboCount() > 0) {
+            int comboCount = cm.getComboCount();
+            float timerRatio = cm.getTimerRatio();
+            java.awt.Color comboColor = cm.getComboColor();
+            
+            int centerX = screenWidth / 2;
+            int comboY = 150; // Đẩy xuống thấp hơn để tránh đè Boss HP Bar
+            
+            // Rung lắc mạnh hơn khi combo cao
+            int shakeX = 0;
+            if (cm.getTier() >= 2) {
+                shakeX = (int)(Math.random() * 6 - 3);
+            }
+            
+            g.setFont(gameproject.FontManager.getFont(48f * cm.getPulseScale()));
+            String comboText = comboCount + " COMBO";
+            int tw = g.getFontMetrics().stringWidth(comboText);
+            
+            // Draw shadow
+            g.setColor(java.awt.Color.BLACK);
+            g.drawString(comboText, centerX - tw/2 + 3 + shakeX, comboY + 3);
+            
+            // Draw main text
+            g.setColor(comboColor);
+            g.drawString(comboText, centerX - tw/2 + shakeX, comboY);
+            
+            // Draw Tier Title
+            String title = cm.getTierTitle();
+            if (!title.isEmpty()) {
+                float titleScale = cm.getTier() == 3 ? (cm.getPulseScale() * 1.2f) : 1.0f;
+                g.setFont(gameproject.FontManager.getFont(40f * titleScale));
+                int ttw = g.getFontMetrics().stringWidth(title);
+                g.setColor(java.awt.Color.BLACK);
+                g.drawString(title, centerX - ttw/2 + 2, comboY - 60 + 2);
+                g.setColor(comboColor);
+                g.drawString(title, centerX - ttw/2, comboY - 60);
+            }
+
+            // Draw timer bar
+            int barW = 140;
+            int barH = 8;
+            int comboBarX = centerX - barW / 2;
+            int comboBarY = comboY + 15;
+            
+            g.setColor(new java.awt.Color(0, 0, 0, 150));
+            g.fillRect(comboBarX, comboBarY, barW, barH);
+            g.setColor(comboColor);
+            g.fillRect(comboBarX, comboBarY, (int)(barW * timerRatio), barH);
+            
+            // Draw Buff text
+            float atkBonus = cm.getFireRateBonus() * 100;
+            float spdBonus = cm.getMoveSpeedBonus() * 100;
+            if (atkBonus > 0) {
+                g.setFont(gameproject.FontManager.getFont(14f));
+                String buffText = "+" + (int)atkBonus + "% FIRE RATE";
+                if (spdBonus > 0) buffText += " | +" + (int)spdBonus + "% SPEED";
+                
+                g.setColor(java.awt.Color.BLACK);
+                g.drawString(buffText, centerX - g.getFontMetrics().stringWidth(buffText)/2 + 1, comboBarY + 25);
+                g.setColor(java.awt.Color.GREEN);
+                g.drawString(buffText, centerX - g.getFontMetrics().stringWidth(buffText)/2, comboBarY + 24);
+            }
+        }
+
         drawMinimap(g, game, player, enemies);
     }
 

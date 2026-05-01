@@ -159,7 +159,7 @@ public class GamePanel extends JPanel implements Runnable {
             // Logic nhạc trong gameplay
             if (entityManager != null && entityManager.activeBossCount > 0) {
                 SoundManager.playMusic("bossbgm");
-            } else if (entityManager != null && entityManager.waveCount >= 15) {
+            } else if (entityManager != null && entityManager.waveCount >= 7) {
                 SoundManager.playMusic("gamebgm2");
             } else {
                 SoundManager.playMusic("gamebgm1");
@@ -173,11 +173,16 @@ public class GamePanel extends JPanel implements Runnable {
 
     public void startNewGame() {
         CharacterClass charClass = PlayerData.selectedClass;
+        
+        // Tạo mới bản đồ cho mỗi lượt chơi để tăng tính ngẫu nhiên (Roguelike experience)
+        buildings = new java.util.ArrayList<>();
+        mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings);
+        
         player = new Player(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, charClass);
         score = 0;
         activeSkills.clear();
         currentWeapon = new Pistol();
-        vfxManager.fireZones.clear();
+        vfxManager.clearAll();
 
         long currentTime = System.currentTimeMillis();
         startTime = currentTime;

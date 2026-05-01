@@ -57,14 +57,29 @@ public class EnemyController {
         enemy.velX += (targetVelX - enemy.velX) * acceleration;
         enemy.velY += (targetVelY - enemy.velY) * acceleration;
 
-        // Áp dụng di chuyển
-        enemy.x += enemy.velX + enemy.kbX;
-        enemy.y += enemy.velY + enemy.kbY;
+        // CHIA NHỎ BƯỚC DI CHUYỂN (Sub-stepping: 2 bước) để tránh xuyên tường mỏng
+        float totalMoveX = enemy.velX + enemy.kbX;
+        float totalMoveY = enemy.velY + enemy.kbY;
 
-        // 4. PHÂN GIẢI VA CHẠM HYBRID (Trượt mượt mà)
-        resolveHybridCollision(enemy, panel.mapManager);
+        for (int step = 0; step < 2; step++) {
+            float oldX = enemy.x;
+            float oldY = enemy.y;
 
-        // 5. GIẢM DẦN LỰC KNOCKBACK
+            enemy.x += totalMoveX / 2.0f;
+            enemy.y += totalMoveY / 2.0f;
+
+            // 4. PHÂN GIẢI VA CHẠM HYBRID (Trượt mượt mà)
+            boolean collided = resolveHybridCollision(enemy, panel.mapManager);
+
+            // Triệt tiêu knockback nếu chạm tường (Tạo cảm giác va chạm chắc chắn)
+            if (collided && (Math.abs(enemy.kbX) > 0.1f || Math.abs(enemy.kbY) > 0.1f)) {
+                enemy.kbX = 0;
+                enemy.kbY = 0;
+                // Khi chạm tường, dừng quán tính theo hướng va chạm (Tùy chọn, ở đây ta triệt tiêu toàn bộ KB)
+            }
+        }
+
+        // 5. GIẢM DẦN LỰC KNOCKBACK (Dành cho trường hợp không chạm tường)
         enemy.kbX *= 0.85f;
         enemy.kbY *= 0.85f;
         if (Math.abs(enemy.kbX) < 0.1f)
@@ -78,7 +93,8 @@ public class EnemyController {
      * Biến quái vật thành một hình tròn ở sát chân để tương tác mượt với môi
      * trường.
      */
-    private static void resolveHybridCollision(Enemy enemy, MapManager map) {
+    private static boolean resolveHybridCollision(Enemy enemy, MapManager map) {
+        boolean collided = false;
         // Thiết lập chân quái vật là một hình tròn vật lý
         float radius = enemy.size * 0.3f; // Bán kính hẹp giúp lách khe
         float cx = enemy.x + enemy.size / 2.0f; // Tâm X
@@ -101,6 +117,7 @@ public class EnemyController {
                 float minDist = radius + cb.radius;
 
                 if (distSq < minDist * minDist) {
+                    collided = true;
                     float dist = (float) Math.sqrt(distSq);
                     if (dist == 0) {
                         dx = 1;
@@ -121,41 +138,43 @@ public class EnemyController {
                 AABBHitbox ab = (AABBHitbox) hb;
 
                 // Tìm điểm gần nhất trên khung chữ nhật so với tâm hình tròn
-                float testX = cx;
-                float testY = cy;
-
-                if (cx < ab.x)
-                    testX = ab.x;
-                else if (cx > ab.x + ab.width)
-                    testX = ab.x + ab.width;
-
-                if (cy < ab.y)
-                    testY = ab.y;
-                else if (cy > ab.y + ab.height)
-                    testY = ab.y + ab.height;
+                float testX = Math.max(ab.x, Math.min(cx, ab.x + ab.width));
+                float testY = Math.max(ab.y, Math.min(cy, ab.y + ab.height));
 
                 float dx = cx - testX;
                 float dy = cy - testY;
                 float distSq = dx * dx + dy * dy;
 
-                if (distSq < radius * radius) {
+                // Trường hợp 1: Tâm ở ngoài nhưng chạm/lồng vào nhau
+                if (distSq > 0 && distSq < radius * radius) {
+                    collided = true;
                     float dist = (float) Math.sqrt(distSq);
-                    if (dist == 0) {
-                        dx = 1;
-                        dist = 1;
-                    } // Tránh chia 0
                     float overlap = radius - dist;
-
-                    // Toán học Vector: Ép trượt dọc theo các cạnh
                     enemy.x += (dx / dist) * overlap;
                     enemy.y += (dy / dist) * overlap;
-
-                    // Cập nhật lại tâm
-                    cx = enemy.x + enemy.size / 2.0f;
-                    cy = enemy.y + enemy.size - radius;
                 }
+                // Trường hợp 2: Tâm ĐÃ LỌT VÀO TRONG (Xảy ra khi knockback quá mạnh)
+                // Phải đẩy ra cạnh gần nhất để không bị xuyên tường
+                else if (distSq == 0) {
+                    collided = true;
+                    float dl = cx - ab.x;
+                    float dr = (ab.x + ab.width) - cx;
+                    float dt = cy - ab.y;
+                    float db = (ab.y + ab.height) - cy;
+
+                    float minDist = Math.min(Math.min(dl, dr), Math.min(dt, db));
+                    if (minDist == dl) enemy.x -= (dl + radius);
+                    else if (minDist == dr) enemy.x += (dr + radius);
+                    else if (minDist == dt) enemy.y -= (dt + radius);
+                    else enemy.y += (db + radius);
+                }
+                
+                // Cập nhật lại tâm sau khi xử lý va chạm này
+                cx = enemy.x + enemy.size / 2.0f;
+                cy = enemy.y + enemy.size - radius;
             }
         }
+        return collided;
     }
 
     private static float[] calculateSeparation(Enemy me, ArrayList<Enemy> enemies) {

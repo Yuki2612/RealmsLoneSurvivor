@@ -45,7 +45,8 @@ public class EntityManager {
     public void update(Player player, VFXManager vfxManager, List<PassiveSkill> activeSkills,
             int screenWidth, int screenHeight, long currentTime, int surviveTimeSeconds, GamePanel panel) {
 
-        // Đếm boss đang hoạt động (không dùng stream để tránh ConcurrentModificationException)
+        // Đếm boss đang hoạt động (không dùng stream để tránh
+        // ConcurrentModificationException)
         int bCount = 0;
         for (Enemy e : enemies) {
             if (e.isBoss && !e.isDying)
@@ -168,17 +169,18 @@ public class EntityManager {
                         // --- Railgun Environment Interaction ---
                         float currentEndX = endX;
                         float currentEndY = endY;
-                        
+
                         // Check for obstacles along the beam path
-                        int steps = 20; 
+                        int steps = 20;
                         for (int s = 0; s <= steps; s++) {
                             float checkX = p.startX + (dirX * p.maxRange * s / steps);
                             float checkY = p.startY + (dirY * p.maxRange * s / steps);
-                            gameproject.environment.Obstacle wallObs = panel.mapManager.getObstacleAtWorld(checkX, checkY);
+                            gameproject.environment.Obstacle wallObs = panel.mapManager.getObstacleAtWorld(checkX,
+                                    checkY);
                             if (wallObs != null && wallObs.isSolid()) {
                                 currentEndX = checkX;
                                 currentEndY = checkY;
-                                wallObs.takeDamage(p.damage); 
+                                wallObs.takeDamage(p.damage);
                                 break;
                             }
                         }
@@ -270,15 +272,18 @@ public class EntityManager {
                             int goldAmount = 100 + (waveCount / 5) * 50;
                             int soulAmount = 1 + (waveCount / 5) * 2;
                             synchronized (resourceDrops) {
-                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, goldAmount, currentTime,
+                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, goldAmount,
+                                        currentTime,
                                         45000);
-                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.SOUL, soulAmount, currentTime,
+                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.SOUL, soulAmount,
+                                        currentTime,
                                         60000);
                             }
                         } else {
                             if (Math.random() < 0.25) {
                                 synchronized (resourceDrops) {
-                                    spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, 1, currentTime, 20000);
+                                    spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, 1, currentTime,
+                                            20000);
                                 }
                             }
                         }
@@ -294,6 +299,7 @@ public class EntityManager {
                         for (PassiveSkill skill : activeSkills) {
                             skill.onEnemyDeath(enemy, player, enemies, vfxManager, currentTime);
                         }
+                        player.getComboManager().onEnemyKilled(enemy.isBoss);
                         enemies.remove(enemy);
                     }
                     continue;
@@ -452,7 +458,8 @@ public class EntityManager {
             ex = Math.max(0, Math.min(ex, GamePanel.WORLD_WIDTH - 30));
             ey = Math.max(0, Math.min(ey, GamePanel.WORLD_HEIGHT - 30));
 
-            // Nếu vị trí này có thể đi được, có đường tới Player, và KHÔNG PHẢI cửa, chấp nhận luôn
+            // Nếu vị trí này có thể đi được, có đường tới Player, và KHÔNG PHẢI cửa, chấp
+            // nhận luôn
             if (panel.mapManager.isNavigable((int) ex + 15, (int) ey + 15)
                     && !panel.mapManager.isEntrance((int) ex + 15, (int) ey + 15)) {
                 break;
@@ -496,25 +503,30 @@ public class EntityManager {
     }
 
     public void drawGroundItems(Graphics g) {
-        for (ChestDrop chest : weaponChests) {
-            java.awt.image.BufferedImage chestImg = gameproject.ImageManager.get(chest.isRare ? "chest2" : "chest1");
-            if (chestImg != null) {
-                g.drawImage(chestImg, (int) chest.x, (int) chest.y, 40, 40, null);
-            } else {
-                g.setColor(chest.isRare ? java.awt.Color.MAGENTA : java.awt.Color.ORANGE);
-                g.fillRect((int) chest.x, (int) chest.y, 40, 40);
-                g.setColor(java.awt.Color.WHITE);
-                g.drawString(chest.isRare ? "RARE" : "CHEST", (int) chest.x - 5, (int) chest.y - 5);
+        synchronized (weaponChests) {
+            for (ChestDrop chest : weaponChests) {
+                java.awt.image.BufferedImage chestImg = gameproject.ImageManager
+                        .get(chest.isRare ? "chest2" : "chest1");
+                if (chestImg != null) {
+                    g.drawImage(chestImg, (int) chest.x, (int) chest.y, 40, 40, null);
+                } else {
+                    g.setColor(chest.isRare ? java.awt.Color.MAGENTA : java.awt.Color.ORANGE);
+                    g.fillRect((int) chest.x, (int) chest.y, 40, 40);
+                    g.setColor(java.awt.Color.WHITE);
+                    g.drawString(chest.isRare ? "RARE" : "CHEST", (int) chest.x - 5, (int) chest.y - 5);
+                }
             }
         }
 
-        for (HeartDrop hd : heartDrops) {
-            java.awt.image.BufferedImage heartImg = gameproject.ImageManager.get("heart");
-            if (heartImg != null) {
-                g.drawImage(heartImg, (int) hd.x - 2, (int) hd.y - 2, 20, 20, null);
-            } else {
-                g.setColor(java.awt.Color.PINK);
-                g.fillRect((int) hd.x, (int) hd.y, 15, 15);
+        synchronized (heartDrops) {
+            for (HeartDrop hd : heartDrops) {
+                java.awt.image.BufferedImage heartImg = gameproject.ImageManager.get("heart");
+                if (heartImg != null) {
+                    g.drawImage(heartImg, (int) hd.x - 2, (int) hd.y - 2, 20, 20, null);
+                } else {
+                    g.setColor(java.awt.Color.PINK);
+                    g.fillRect((int) hd.x, (int) hd.y, 15, 15);
+                }
             }
         }
 
@@ -526,8 +538,11 @@ public class EntityManager {
     }
 
     public void drawProjectiles(Graphics g) {
-        for (Projectile p : projectiles)
-            p.draw(g);
+        synchronized (projectiles) {
+            for (Projectile p : projectiles) {
+                p.draw(g);
+            }
+        }
     }
 
     private float distanceToLineSegment(float px, float py, float x1, float y1, float x2, float y2) {

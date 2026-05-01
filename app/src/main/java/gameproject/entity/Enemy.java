@@ -23,6 +23,7 @@ public abstract class Enemy implements gameproject.Renderable {
     public float getBottomY() {
         return y + size; // Chân của quái
     }
+
     protected int hp, maxHp;
     protected Color color;
 

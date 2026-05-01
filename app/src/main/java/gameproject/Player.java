@@ -25,7 +25,7 @@ public class Player implements Renderable {
 
     @Override
     public float getBottomY() {
-        return y + SIZE; // Chân của người chơi
+        return y + SIZE; 
     }
 
     private float speed = 4f;
@@ -35,7 +35,6 @@ public class Player implements Renderable {
     private final int MAX_HEARTS = 15;
     private long invulnerableUntil = 0;
 
-    // GOM CHUNG TOÀN BỘ NÂNG CẤP VÀO ĐÂY ĐỂ ĐẾM LEVEL
     private Map<Upgrade, Integer> upgradeLevels = new HashMap<>();
 
     private boolean up, down, left, right;
@@ -47,10 +46,7 @@ public class Player implements Renderable {
     private final long DASH_DURATION = 150;
     private final float DASH_SPEED = 18.0f;
 
-    // FSM & Animation System (PRO Version)
-    public enum PlayerState {
-        IDLE, RUN
-    }
+    public enum PlayerState { IDLE, RUN }
 
     private PlayerState currentState = PlayerState.IDLE;
     private String animDir = "down";
@@ -58,6 +54,9 @@ public class Player implements Renderable {
 
     private Map<String, Animation> animations = new HashMap<>();
     private Animation activeAnim;
+    
+    // Combo System integration
+    private ComboManager comboManager;
 
     public Player(float startX, float startY, CharacterClass charClass) {
         this.x = startX;
@@ -66,6 +65,7 @@ public class Player implements Renderable {
         this.lastDashTime = -dashCooldown;
         this.hearts = charClass.baseHp + (PlayerData.statHealthLevel / 10);
         this.speed = (5.0f * charClass.speedMulti) * (1.0f + PlayerData.statSpeedLevel * 0.02f);
+        this.comboManager = new ComboManager();
 
         initAnimations(charClass);
     }
@@ -73,46 +73,33 @@ public class Player implements Renderable {
     private void initAnimations(CharacterClass charClass) {
         String pKey = PlayerData.getPlayerImageKey();
         String fallback = "player1";
-
-        // Định nghĩa các cặp State_Direction
         String[] states = { "idle", "run" };
         String[] dirs = { "side", "down", "up" };
 
         for (String s : states) {
             for (String d : dirs) {
                 String key = s + "_" + d;
-                int delay = s.equals("run") ? 6 : 8; // Chạy nhanh hơn đứng yên
+                int delay = s.equals("run") ? 6 : 8;
                 Animation anim = new Animation(delay);
-
-                // Caching: Lấy từ ImageManager
                 BufferedImage[] frames = ImageManager.getAnimation(pKey + "_" + key);
-                if (frames == null)
-                    frames = ImageManager.getAnimation(fallback + "_" + key);
-
-                // Fallback đặc biệt cho idle_up
+                if (frames == null) frames = ImageManager.getAnimation(fallback + "_" + key);
                 if (frames == null && s.equals("idle") && d.equals("up")) {
                     frames = ImageManager.getAnimation(pKey + "_run_up");
-                    if (frames == null)
-                        frames = ImageManager.getAnimation(fallback + "_run_up");
+                    if (frames == null) frames = ImageManager.getAnimation(fallback + "_run_up");
                 }
-
                 if (frames != null) {
                     anim.setFrames(frames);
                     animations.put(key, anim);
                 }
             }
         }
-
-        // Mặc định
         activeAnim = animations.get("idle_down");
-        if (activeAnim == null)
-            activeAnim = animations.get("idle_side");
+        if (activeAnim == null) activeAnim = animations.get("idle_side");
     }
 
     private void setState(PlayerState newState, String newDir) {
         String stateKey = (newState == PlayerState.RUN ? "run" : "idle") + "_" + newDir;
         Animation nextAnim = animations.get(stateKey);
-
         if (nextAnim != null && nextAnim != activeAnim) {
             activeAnim = nextAnim;
         }
@@ -121,6 +108,7 @@ public class Player implements Renderable {
     }
 
     public void update(GamePanel game) {
+        comboManager.update();
         boolean isMoving = false;
         String nextDir = animDir;
 
@@ -130,22 +118,20 @@ public class Player implements Renderable {
             } else {
                 float nextX = x + dashDirX * DASH_SPEED;
                 float nextY = y + dashDirY * DASH_SPEED;
-
-                // Kiểm tra va chạm pixel-perfect với Hitbox thực tế
                 if (!game.mapManager.isColliding(nextX, nextY, SIZE, SIZE)) {
                     x = nextX;
                     y = nextY;
                 }
-
                 x = Math.max(0, Math.min(x, GamePanel.WORLD_WIDTH - SIZE));
                 y = Math.max(0, Math.min(y, GamePanel.WORLD_HEIGHT - SIZE));
                 isMoving = true;
             }
         } else {
             float currentDirX = 0, currentDirY = 0;
-            int pad = 4;
+            float currentSpeed = speed * (1.0f + comboManager.getMoveSpeedBonus());
+
             if (up && y > 0) {
-                float nextY = y - speed;
+                float nextY = y - currentSpeed;
                 if (!game.mapManager.isColliding(x, nextY, SIZE, SIZE)) {
                     y = nextY;
                     currentDirY = -1;
@@ -154,7 +140,7 @@ public class Player implements Renderable {
                 }
             }
             if (down && y < GamePanel.WORLD_HEIGHT - SIZE) {
-                float nextY = y + speed;
+                float nextY = y + currentSpeed;
                 if (!game.mapManager.isColliding(x, nextY, SIZE, SIZE)) {
                     y = nextY;
                     currentDirY = 1;
@@ -163,7 +149,7 @@ public class Player implements Renderable {
                 }
             }
             if (left && x > 0) {
-                float nextX = x - speed;
+                float nextX = x - currentSpeed;
                 if (!game.mapManager.isColliding(nextX, y, SIZE, SIZE)) {
                     x = nextX;
                     currentDirX = -1;
@@ -173,7 +159,7 @@ public class Player implements Renderable {
                 }
             }
             if (right && x < GamePanel.WORLD_WIDTH - SIZE) {
-                float nextX = x + speed;
+                float nextX = x + currentSpeed;
                 if (!game.mapManager.isColliding(nextX, y, SIZE, SIZE)) {
                     x = nextX;
                     currentDirX = 1;
@@ -182,45 +168,30 @@ public class Player implements Renderable {
                     facingRight = true;
                 }
             }
-
             if (isMoving) {
                 lastDirX = currentDirX;
                 lastDirY = currentDirY;
             } else {
-                // Hướng khi đứng yên dựa trên hướng cuối cùng
-                if (lastDirY < 0)
-                    nextDir = "up";
-                else if (lastDirY > 0)
-                    nextDir = "down";
-                else
-                    nextDir = "side";
+                if (lastDirY < 0) nextDir = "up";
+                else if (lastDirY > 0) nextDir = "down";
+                else nextDir = "side";
             }
         }
-
-        // Chuyển đổi State & Animation thông qua FSM
         setState(isMoving ? PlayerState.RUN : PlayerState.IDLE, nextDir);
-
-        if (activeAnim != null) {
-            activeAnim.update();
-        }
+        if (activeAnim != null) activeAnim.update();
     }
 
     public void draw(Graphics g) {
-        if (isInvulnerable() && System.currentTimeMillis() % 200 < 100)
-            return;
-
+        if (isInvulnerable() && System.currentTimeMillis() % 200 < 100) return;
         BufferedImage img = (activeAnim != null) ? activeAnim.getCurrentFrame() : null;
-
         if (img != null) {
             int drawX = (int) x - 10;
             int drawY = (int) y - 20;
             int drawSize = SIZE + 20;
-
             Graphics2D g2d = (Graphics2D) g.create();
             if (isDashing) {
                 g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
             }
-
             if (animDir.equals("side") && !facingRight) {
                 g2d.drawImage(img, drawX + drawSize, drawY, -drawSize, drawSize, null);
             } else {
@@ -231,8 +202,6 @@ public class Player implements Renderable {
             g.setColor(isDashing ? Color.CYAN : Color.RED);
             g.fillRect((int) x, (int) y, SIZE, SIZE);
         }
-
-        // Draw Hitbox for debugging
         if (GamePanel.showHitboxes) {
             g.setColor(Color.GREEN);
             Rectangle b = getBounds();
@@ -252,13 +221,8 @@ public class Player implements Renderable {
                     dashStartTime = System.currentTimeMillis();
                     lastDashTime = dashStartTime;
                     float length = (float) Math.sqrt(lastDirX * lastDirX + lastDirY * lastDirY);
-                    if (length == 0) {
-                        dashDirX = 1;
-                        dashDirY = 0;
-                    } else {
-                        dashDirX = lastDirX / length;
-                        dashDirY = lastDirY / length;
-                    }
+                    if (length == 0) { dashDirX = 1; dashDirY = 0; }
+                    else { dashDirX = lastDirX / length; dashDirY = lastDirY / length; }
                 }
             }
         }
@@ -273,96 +237,48 @@ public class Player implements Renderable {
         }
     }
 
-    public void resetMovement() {
-        up = down = left = right = false;
-    }
-
-    public void upgradeSpeed(float amount) {
-        this.speed += amount;
-    }
-
-    public void upgradeDashCooldown(long reduction) {
-        this.dashCooldown = Math.max(500, this.dashCooldown - reduction);
-    }
-
-    public void addHeart() {
-        if (hearts < MAX_HEARTS)
-            hearts++;
-    }
-
-    public int getHearts() {
-        return hearts;
-    }
+    public void resetMovement() { up = down = left = right = false; }
+    public void upgradeSpeed(float amount) { this.speed += amount; }
+    public void upgradeDashCooldown(long reduction) { this.dashCooldown = Math.max(500, this.dashCooldown - reduction); }
+    public void addHeart() { if (hearts < MAX_HEARTS) hearts++; }
+    public int getHearts() { return hearts; }
 
     public boolean takeHit() {
-        if (isInvulnerable())
-            return false;
+        if (isInvulnerable()) return false;
         hearts--;
         invulnerableUntil = System.currentTimeMillis() + 1000;
         return hearts <= 0;
     }
 
-    // LÕI XỬ LÝ LEVEL CỦA TẤT CẢ NÂNG CẤP (MAX LEVEL = 10)
     public void levelUpUpgrade(Upgrade u) {
         int current = upgradeLevels.getOrDefault(u, 0);
-        if (current < 10)
-            upgradeLevels.put(u, current + 1);
+        if (current < 10) upgradeLevels.put(u, current + 1);
     }
 
-    public int getUpgradeLevel(Upgrade u) {
-        return upgradeLevels.getOrDefault(u, 0);
-    }
-
-    // Giữ nguyên hàm này để tránh báo lỗi các Kỹ năng cũ
-    public void levelUpBreakthrough(Upgrade u) {
-        levelUpUpgrade(u);
-    }
-
-    public int getBreakthroughLevel(Upgrade u) {
-        return getUpgradeLevel(u);
-    }
+    public int getUpgradeLevel(Upgrade u) { return upgradeLevels.getOrDefault(u, 0); }
+    public void levelUpBreakthrough(Upgrade u) { levelUpUpgrade(u); }
+    public int getBreakthroughLevel(Upgrade u) { return getUpgradeLevel(u); }
 
     public List<Upgrade> getOwnedBreakthroughs() {
         List<Upgrade> list = new ArrayList<>();
         for (Upgrade u : upgradeLevels.keySet()) {
-            if (u.isBreakthrough)
-                list.add(u);
+            if (u.isBreakthrough) list.add(u);
         }
         return list;
     }
 
-    public boolean isInvulnerable() {
-        return System.currentTimeMillis() < invulnerableUntil;
-    }
-
+    public boolean isInvulnerable() { return System.currentTimeMillis() < invulnerableUntil; }
     public void addInvulnerability(long duration) {
         long now = System.currentTimeMillis();
-        if (invulnerableUntil < now)
-            invulnerableUntil = now;
+        if (invulnerableUntil < now) invulnerableUntil = now;
         invulnerableUntil += duration;
     }
 
-    public Rectangle getBounds() {
-        return new Rectangle((int) x, (int) y, SIZE, SIZE);
-    }
-
-    public float getX() {
-        return x;
-    }
-
-    public float getY() {
-        return y;
-    }
-
-    public boolean isDashing() {
-        return isDashing;
-    }
-
-    public long getLastDashTime() {
-        return lastDashTime;
-    }
-
-    public long getDashCooldown() {
-        return dashCooldown;
-    }
+    public Rectangle getBounds() { return new Rectangle((int) x, (int) y, SIZE, SIZE); }
+    public float getX() { return x; }
+    public float getY() { return y; }
+    public boolean isDashing() { return isDashing; }
+    public long getLastDashTime() { return lastDashTime; }
+    public long getDashCooldown() { return dashCooldown; }
+    public ComboManager getComboManager() { return comboManager; }
 }

@@ -17,7 +17,7 @@ public class ImageManager {
             BufferedImage img = ImageIO.read(new File(path));
             images.put(name, img);
         } catch (IOException e) {
-            System.err.println("LỖI CHÍ MẠNG: Không tìm thấy ảnh tại đường dẫn -> " + path);
+            // System.err.println("LỖI CHÍ MẠNG: Không tìm thấy ảnh tại đường dẫn -> " + path);
         }
     }
 
@@ -31,9 +31,9 @@ public class ImageManager {
         }
 
         if (!file.exists()) {
-            if (key.startsWith("player1")) {
-                System.err.println("THIẾU ANIMATION: " + path);
-            }
+            // if (key.startsWith("player1")) {
+            //     System.err.println("THIẾU ANIMATION: " + path);
+            // }
             return;
         }
         try {
@@ -48,7 +48,7 @@ public class ImageManager {
             }
             animations.put(key, anim);
         } catch (IOException e) {
-            System.err.println("LỖI ĐỌC FILE ANIMATION: " + path);
+            // System.err.println("LỖI ĐỌC FILE ANIMATION: " + path);
         }
     }
 

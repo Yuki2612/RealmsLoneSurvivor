@@ -7,6 +7,8 @@ import java.awt.Font;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.RadialGradientPaint;
+import java.awt.geom.Point2D;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -95,6 +97,16 @@ public class VFXManager {
     public ArrayList<Particle>       particles      = new ArrayList<>();
     public ArrayList<DashAfterimage> afterimages    = new ArrayList<>();
     private ArrayList<WaveBanner>    waveBanners    = new ArrayList<>();
+    
+    public void clearAll() {
+        synchronized(fireZones) { fireZones.clear(); }
+        synchronized(damageTexts) { damageTexts.clear(); }
+        synchronized(lasers) { lasers.clear(); }
+        synchronized(particles) { particles.clear(); }
+        synchronized(afterimages) { afterimages.clear(); }
+        synchronized(waveBanners) { waveBanners.clear(); }
+        shakeTimer = 0;
+    }
 
     public boolean showDamageText = true;
     private int shakeTimer = 0;
@@ -164,6 +176,28 @@ public class VFXManager {
         waveBanners.add(new WaveBanner(text, color, currentTime));
     }
 
+    public void spawnComboSparkles(float cx, float cy, long currentTime, Color color, int tier) {
+        if (Math.random() < 0.25) {
+            double angle = Math.random() * 2 * Math.PI;
+            float speed = 0.5f + (float) (Math.random() * 1.5f);
+            float vx = (float) Math.cos(angle) * speed;
+            float vy = (float) Math.sin(angle) * speed - 1.2f; // Bay lên mạnh hơn
+            
+            Color pColor = color;
+            int sz = 3;
+            int life = 600;
+            
+            // Nếu là Tier 1, tạo hiệu ứng gió (màu trắng/xanh nhạt)
+            if (tier == 1) {
+                pColor = new Color(200, 240, 255, 180);
+                sz = 2;
+                life = 800;
+            }
+            
+            particles.add(new Particle(cx, cy, vx, vy, currentTime, pColor, sz, life));
+        }
+    }
+
     // ── Private helpers ────────────────────────────────────────────
 
     private void spawnParticleBurst(float cx, float cy, int count, long currentTime,
@@ -228,86 +262,96 @@ public class VFXManager {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 1. Dash afterimages (vẽ trước player)
-        for (DashAfterimage a : afterimages) {
-            java.awt.image.BufferedImage img = ImageManager.get(PlayerData.getPlayerImageKey());
-            if (img == null) img = ImageManager.get("player"); // Fallback
-            if (img != null) {
-                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.25f));
-                g2d.drawImage(img, (int) a.x - 10, (int) a.y - 20, 45, 45, null);
-                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+        // 1. Dash afterimages
+        synchronized (afterimages) {
+            for (DashAfterimage a : afterimages) {
+                java.awt.image.BufferedImage img = ImageManager.get(PlayerData.getPlayerImageKey());
+                if (img == null) img = ImageManager.get("player");
+                if (img != null) {
+                    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.25f));
+                    g2d.drawImage(img, (int) a.x - 10, (int) a.y - 20, 45, 45, null);
+                    g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+                }
             }
         }
 
         // 2. Lasers
-        for (LaserVFX l : lasers) {
-            g2d.setColor(new Color(0, 255, 255, 220));
-            g2d.setStroke(new BasicStroke(24));
-            g2d.drawLine((int) l.x1, (int) l.y1, (int) l.x2, (int) l.y2);
-            g2d.setColor(Color.WHITE);
-            g2d.setStroke(new BasicStroke(10));
-            g2d.drawLine((int) l.x1, (int) l.y1, (int) l.x2, (int) l.y2);
-            g2d.setStroke(new BasicStroke(1));
+        synchronized (lasers) {
+            for (LaserVFX l : lasers) {
+                g2d.setColor(new Color(0, 255, 255, 220));
+                g2d.setStroke(new BasicStroke(24));
+                g2d.drawLine((int) l.x1, (int) l.y1, (int) l.x2, (int) l.y2);
+                g2d.setColor(Color.WHITE);
+                g2d.setStroke(new BasicStroke(10));
+                g2d.drawLine((int) l.x1, (int) l.y1, (int) l.x2, (int) l.y2);
+                g2d.setStroke(new BasicStroke(1));
+            }
         }
 
         // 3. Fire zones / acid / explosion
-        for (FireZone fz : fireZones) {
-            if (fz.isExplosion) {
-                g.setColor(new Color(255, 50, 50, 150));
-                g.fillOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
-                g.setColor(new Color(255, 200, 0, 100));
-                g.drawOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
-            } else if (fz.isAcid) {
-                g.setColor(new Color(50, 255, 50, 80));
-                g.fillOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
-                g.setColor(new Color(0, 255, 0, 150));
-                g.drawOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
-            } else {
-                g.setColor(new Color(255, 100, 0, 150));
-                g.fillRect((int) fz.x, (int) fz.y, fz.radius, fz.radius);
+        synchronized (fireZones) {
+            for (FireZone fz : fireZones) {
+                if (fz.isExplosion) {
+                    g.setColor(new Color(255, 50, 50, 150));
+                    g.fillOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
+                    g.setColor(new Color(255, 200, 0, 100));
+                    g.drawOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
+                } else if (fz.isAcid) {
+                    g.setColor(new Color(50, 255, 50, 80));
+                    g.fillOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
+                    g.setColor(new Color(0, 255, 0, 150));
+                    g.drawOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
+                } else {
+                    g.setColor(new Color(255, 100, 0, 150));
+                    g.fillRect((int) fz.x, (int) fz.y, fz.radius, fz.radius);
+                }
             }
         }
 
         // 4. Particles
-        for (Particle p : particles) {
-            g2d.setColor(p.color);
-            g2d.fillRect((int) p.x, (int) p.y, p.size, p.size);
+        synchronized (particles) {
+            for (Particle p : particles) {
+                g2d.setColor(p.color);
+                g2d.fillRect((int) p.x, (int) p.y, p.size, p.size);
+            }
         }
 
         // 5. Damage texts
         if (showDamageText) {
-            for (DamageText dt : damageTexts) {
-                if (dt.isCrit) {
-                    // Crit: vàng, to hơn, prefix "!"
-                    g2d.setFont(FontManager.getFont(22f));
-                    String text = "! " + dt.damage;
-                    g2d.setColor(new Color(80, 60, 0));
-                    g2d.drawString(text, (int) dt.x + 2, (int) dt.y + 2);
-                    g2d.setColor(new Color(255, 220, 0));
-                    g2d.drawString(text, (int) dt.x, (int) dt.y);
-                } else if (dt.color == Color.WHITE && dt.damage >= 300) {
-                    // Damage lớn
-                    g2d.setFont(FontManager.getFont(20f));
-                    String text = String.valueOf(dt.damage);
-                    g2d.setColor(Color.BLACK);
-                    for (int dx = -2; dx <= 2; dx++) for (int dy = -2; dy <= 2; dy++)
-                        if (dx != 0 || dy != 0) g2d.drawString(text, (int) dt.x + dx, (int) dt.y + dy);
-                    g2d.setColor(Color.WHITE);
-                    g2d.drawString(text, (int) dt.x, (int) dt.y);
-                } else {
-                    g2d.setFont(FontManager.getFont(15f));
-                    String text = String.valueOf(dt.damage);
-                    g2d.setColor(Color.BLACK);
-                    g2d.drawString(text, (int) dt.x + 1, (int) dt.y + 1);
-                    g2d.setColor(dt.color);
-                    g2d.drawString(text, (int) dt.x, (int) dt.y);
+            synchronized (damageTexts) {
+                for (DamageText dt : damageTexts) {
+                    if (dt.isCrit) {
+                        g2d.setFont(FontManager.getFont(22f));
+                        String text = "! " + dt.damage;
+                        g2d.setColor(new Color(80, 60, 0));
+                        g2d.drawString(text, (int) dt.x + 2, (int) dt.y + 2);
+                        g2d.setColor(new Color(255, 220, 0));
+                        g2d.drawString(text, (int) dt.x, (int) dt.y);
+                    } else if (dt.color == Color.WHITE && dt.damage >= 300) {
+                        g2d.setFont(FontManager.getFont(20f));
+                        String text = String.valueOf(dt.damage);
+                        g2d.setColor(Color.BLACK);
+                        for (int dx = -2; dx <= 2; dx++)
+                            for (int dy = -2; dy <= 2; dy++)
+                                if (dx != 0 || dy != 0)
+                                    g2d.drawString(text, (int) dt.x + dx, (int) dt.y + dy);
+                        g2d.setColor(Color.WHITE);
+                        g2d.drawString(text, (int) dt.x, (int) dt.y);
+                    } else {
+                        g2d.setFont(FontManager.getFont(15f));
+                        String text = String.valueOf(dt.damage);
+                        g2d.setColor(Color.BLACK);
+                        g2d.drawString(text, (int) dt.x + 1, (int) dt.y + 1);
+                        g2d.setColor(dt.color);
+                        g2d.drawString(text, (int) dt.x, (int) dt.y);
+                    }
                 }
             }
         }
     }
 
     /** Vẽ sau cùng (overlay toàn màn hình) — gọi SAU resetScreenShake */
-    public void drawOverlays(Graphics g, int screenW, int screenH, long currentTime) {
+    public void drawOverlays(Graphics g, int screenW, int screenH, long currentTime, Player player) {
         Graphics2D g2d = (Graphics2D) g;
 
         // Player damage flash (red vignette)
@@ -317,6 +361,26 @@ public class VFXManager {
             g2d.setColor(Color.RED);
             g2d.fillRect(0, 0, screenW, screenH);
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+        }
+
+        // Tier 3 Pulsing Radial Vignette - Responsive Fit
+        if (player.getComboManager().getTier() >= 3) {
+            float pulse = (float) (Math.sin(currentTime / 150.0) * 0.2f + 0.4f); // Alpha 0.2 to 0.6
+            float[] fractions = {0.0f, 0.6f, 1.0f}; // 60% center clear, 40% edges colored
+            Color[] colors = {
+                new Color(0, 0, 0, 0), 
+                new Color(0, 0, 0, 0), 
+                new Color(255, 140, 0, (int)(pulse * 255)) 
+            };
+            
+            Point2D center = new Point2D.Float(screenW / 2f, screenH / 2f);
+            // Bán kính bằng chính xác khoảng cách từ tâm đến góc màn hình để fit mọi tỉ lệ
+            float radius = (float) Math.sqrt(screenW * screenW + screenH * screenH) / 2.0f;
+            
+            RadialGradientPaint paint = new RadialGradientPaint(center, radius, fractions, colors);
+            g2d.setPaint(paint);
+            g2d.fillRect(0, 0, screenW, screenH);
+            g2d.setPaint(null); 
         }
 
         // Wave banners

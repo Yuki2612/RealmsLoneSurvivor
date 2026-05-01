@@ -266,6 +266,9 @@ public class MapManager {
             for (int c = 0; c < cols; c++) {
                 // CHỈ SINH VẬT THỂ NẾU NẰM NGOÀI VÙNG ĐỆM CỦA NHÀ (isBuildingZone)
                 if (grid[r][c].obstacle == null && !grid[r][c].isBuildingZone) {
+                    // Kiểm tra khoảng cách với các vật thể tự nhiên khác (bán kính 1 ô)
+                    if (isNaturalObstacleNearby(r, c, 1)) continue;
+
                     double roll = Math.random();
                     if (roll < 0.02)
                         grid[r][c].obstacle = new Rock(c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE);
@@ -277,6 +280,20 @@ public class MapManager {
             }
         }
         clearSpawnArea();
+    }
+
+    private boolean isNaturalObstacleNearby(int r, int c, int radius) {
+        for (int i = r - radius; i <= r + radius; i++) {
+            for (int j = c - radius; j <= c + radius; j++) {
+                if (i >= 0 && i < rows && j >= 0 && j < cols) {
+                    Obstacle obs = grid[i][j].obstacle;
+                    if (obs != null && (obs instanceof Tree || obs instanceof Rock || obs instanceof WoodenCrate)) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void clearSpawnArea() {

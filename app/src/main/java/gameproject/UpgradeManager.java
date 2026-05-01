@@ -45,6 +45,7 @@ public class UpgradeManager {
             // Gán EXP vào. Khi game bắt đầu, processLevelUp sẽ tự động kích hoạt giao diện chọn thẻ liên tục.
             currentExp = totalExpNeeded;
         }
+        currentUpgradeOptions = null;
     }
 
     public void addExp(int amount) {

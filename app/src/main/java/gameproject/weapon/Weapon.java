@@ -23,12 +23,13 @@ public abstract class Weapon {
         this.baseRange = range;
     }
 
-    public long getActualCooldown() {
-        return (long) (cooldown * (1.0f - gameproject.meta.PlayerData.statCooldownLevel * 0.02f));
+    public long getActualCooldown(float fireRateBonus) {
+        float totalBonus = gameproject.meta.PlayerData.statCooldownLevel * 0.02f + fireRateBonus;
+        return (long) (cooldown * (1.0f - Math.min(0.9f, totalBonus)));
     }
 
-    public boolean canShoot(long currentTime) {
-        return currentTime - lastShootTime >= getActualCooldown();
+    public boolean canShoot(long currentTime, float fireRateBonus) {
+        return currentTime - lastShootTime >= getActualCooldown(fireRateBonus);
     }
 
     public abstract void shoot(float startX, float startY, float targetX, float targetY,
