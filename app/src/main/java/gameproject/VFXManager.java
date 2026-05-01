@@ -216,26 +216,30 @@ public class VFXManager {
     // ── Update ─────────────────────────────────────────────────────
 
     public void update(long currentTime) {
-        fireZones.removeIf(fz -> currentTime > fz.expireTime);
-        lasers.removeIf(l  -> currentTime > l.expireTime);
-        afterimages.removeIf(a -> currentTime > a.expireTime);
-        waveBanners.removeIf(b -> currentTime > b.expireTime);
+        synchronized (fireZones) { fireZones.removeIf(fz -> currentTime > fz.expireTime); }
+        synchronized (lasers) { lasers.removeIf(l -> currentTime > l.expireTime); }
+        synchronized (afterimages) { afterimages.removeIf(a -> currentTime > a.expireTime); }
+        synchronized (waveBanners) { waveBanners.removeIf(b -> currentTime > b.expireTime); }
 
-        Iterator<DamageText> dIt = damageTexts.iterator();
-        while (dIt.hasNext()) {
-            DamageText dt = dIt.next();
-            if (currentTime > dt.expireTime) dIt.remove();
-            else dt.y -= (dt.isCrit ? 0.9f : 0.6f);
+        synchronized (damageTexts) {
+            Iterator<DamageText> dIt = damageTexts.iterator();
+            while (dIt.hasNext()) {
+                DamageText dt = dIt.next();
+                if (currentTime > dt.expireTime) dIt.remove();
+                else dt.y -= (dt.isCrit ? 0.9f : 0.6f);
+            }
         }
 
-        Iterator<Particle> pIt = particles.iterator();
-        while (pIt.hasNext()) {
-            Particle p = pIt.next();
-            if (currentTime > p.expireTime) { pIt.remove(); continue; }
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.12f; // nhẹ gravity
-            p.vx *= 0.92f;
+        synchronized (particles) {
+            Iterator<Particle> pIt = particles.iterator();
+            while (pIt.hasNext()) {
+                Particle p = pIt.next();
+                if (currentTime > p.expireTime) { pIt.remove(); continue; }
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.12f; // nhẹ gravity
+                p.vx *= 0.92f;
+            }
         }
     }
 
@@ -384,26 +388,29 @@ public class VFXManager {
         }
 
         // Wave banners
-        for (WaveBanner b : waveBanners) {
-            float life = (float)(b.expireTime - currentTime) / 2500f;
-            float alpha = Math.min(1f, life * 3f); // fade in fast, fade out slow
-            if (alpha <= 0) continue;
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
+        synchronized (waveBanners) {
+            for (WaveBanner b : waveBanners) {
+                float life = (float) (b.expireTime - currentTime) / 2500f;
+                float alpha = Math.min(1f, life * 3f); // fade in fast, fade out slow
+                if (alpha <= 0)
+                    continue;
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
 
-            g2d.setFont(FontManager.getFont(52f));
-            int tw = g2d.getFontMetrics().stringWidth(b.text);
-            int bx = screenW / 2 - tw / 2;
-            int by = screenH / 3;
+                g2d.setFont(FontManager.getFont(52f));
+                int tw = g2d.getFontMetrics().stringWidth(b.text);
+                int bx = screenW / 2 - tw / 2;
+                int by = screenH / 3;
 
-            // Shadow
-            g2d.setColor(new Color(0, 0, 0, 180));
-            g2d.fillRoundRect(bx - 30, by - 55, tw + 60, 75, 16, 16);
+                // Shadow
+                g2d.setColor(new Color(0, 0, 0, 180));
+                g2d.fillRoundRect(bx - 30, by - 55, tw + 60, 75, 16, 16);
 
-            g2d.setColor(Color.BLACK);
-            g2d.drawString(b.text, bx + 3, by + 3);
-            g2d.setColor(b.color);
-            g2d.drawString(b.text, bx, by);
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+                g2d.setColor(Color.BLACK);
+                g2d.drawString(b.text, bx + 3, by + 3);
+                g2d.setColor(b.color);
+                g2d.drawString(b.text, bx, by);
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+            }
         }
     }
 }

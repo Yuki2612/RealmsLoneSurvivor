@@ -371,33 +371,40 @@ public class EntityManager {
         }
 
         // 5. XỬ LÝ VẬT PHẨM (MÁU, RƯƠNG)
-        Iterator<HeartDrop> hIt = heartDrops.iterator();
-        while (hIt.hasNext()) {
-            HeartDrop hd = hIt.next();
-            if (currentTime > hd.expireTime)
-                hIt.remove();
-            else if (player.getBounds().intersects(new Rectangle((int) hd.x, (int) hd.y, 15, 15))) {
-                player.addHeart();
-                hIt.remove();
+        synchronized (heartDrops) {
+            Iterator<HeartDrop> hIt = heartDrops.iterator();
+            while (hIt.hasNext()) {
+                HeartDrop hd = hIt.next();
+                if (currentTime > hd.expireTime)
+                    hIt.remove();
+                else if (player.getBounds().intersects(new Rectangle((int) hd.x, (int) hd.y, 15, 15))) {
+                    player.addHeart();
+                    hIt.remove();
+                }
             }
         }
 
-        for (VFXManager.FireZone fz : vfxManager.fireZones) {
-            if (fz.isAcid) {
-                Rectangle acidBox = new Rectangle((int) fz.x, (int) fz.y, fz.radius, fz.radius);
-                for (Enemy e : enemies) {
-                    if (e.getBounds().intersects(acidBox)) {
-                        e.inAcidZone = true;
-                        e.applyPoison(500);
+        synchronized (vfxManager.fireZones) {
+            for (VFXManager.FireZone fz : vfxManager.fireZones) {
+                if (fz.isAcid) {
+                    Rectangle acidBox = new Rectangle((int) fz.x, (int) fz.y, fz.radius, fz.radius);
+                    synchronized (enemies) {
+                        for (Enemy e : enemies) {
+                            if (e.getBounds().intersects(acidBox)) {
+                                e.inAcidZone = true;
+                                e.applyPoison(500);
+                            }
+                        }
                     }
                 }
             }
         }
 
-        Iterator<ChestDrop> cIt = weaponChests.iterator();
-        while (cIt.hasNext()) {
-            ChestDrop chest = cIt.next();
-            if (currentTime > chest.expirationTime) {
+        synchronized (weaponChests) {
+            Iterator<ChestDrop> cIt = weaponChests.iterator();
+            while (cIt.hasNext()) {
+                ChestDrop chest = cIt.next();
+                if (currentTime > chest.expirationTime) {
                 cIt.remove();
                 continue;
             }
@@ -408,6 +415,7 @@ public class EntityManager {
                     panel.triggerBreakthroughUpgrade();
                 }
                 cIt.remove();
+            }
             }
         }
     }
