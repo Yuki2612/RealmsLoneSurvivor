@@ -9,6 +9,11 @@ public class HellfireBoomstick extends Weapon {
     }
 
     @Override
+    public int getProjectilesPerShot() {
+        return 5;
+    }
+
+    @Override
     public void shoot(float startX, float startY, float targetX, float targetY,
             float bulletSpeedMulti, int playerDamage, int bounces,
             ArrayList<Projectile> projectiles, long currentTime) {

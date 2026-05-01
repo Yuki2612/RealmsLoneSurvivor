@@ -1,4 +1,5 @@
 package gameproject.entity;
+import gameproject.GamePanel;
 
 import java.awt.Graphics;
 import java.awt.image.BufferedImage;
@@ -70,8 +71,8 @@ public class ResourceDrop {
 
     public void draw(java.awt.Graphics g) {
         java.awt.image.BufferedImage img = ImageManager.get(type == Type.GOLD ? "gold" : "soul");
-        int drawX = (int) x;
-        int drawY = (int) y;
+        int drawX = (int) Math.round(x) - GamePanel.instance.camIntX;
+        int drawY = (int) Math.round(y) - GamePanel.instance.camIntY;
 
         if (img != null) {
             g.drawImage(img, drawX - 12, drawY - 12, 24, 24, null);

@@ -15,13 +15,13 @@ public class ComboManager {
     private float pulseScale = 1.0f;
 
     public void onEnemyKilled(boolean isBoss) {
-        lastKillTime = System.currentTimeMillis();
+        lastKillTime = gameproject.GamePanel.getTickTime();
         comboCount += (isBoss ? 20 : 1); // Boss chuẩn +20
         pulseScale = 1.4f;
     }
 
     public void update() {
-        if (comboCount > 0 && System.currentTimeMillis() - lastKillTime > COMBO_DURATION) {
+        if (comboCount > 0 && gameproject.GamePanel.getTickTime() - lastKillTime > COMBO_DURATION) {
             comboCount = 0;
         }
         if (pulseScale > 1.0f) {
@@ -54,7 +54,7 @@ public class ComboManager {
     
     public float getTimerRatio() {
         if (comboCount == 0) return 0;
-        long elapsed = System.currentTimeMillis() - lastKillTime;
+        long elapsed = gameproject.GamePanel.getTickTime() - lastKillTime;
         return Math.max(0, 1.0f - (float) elapsed / COMBO_DURATION);
     }
 

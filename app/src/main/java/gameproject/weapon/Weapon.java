@@ -7,11 +7,11 @@ public abstract class Weapon {
     public String name;
     public float damageMultiplier;
     public long cooldown;
-    public long baseCooldown;     // Chỉ số cooldown gốc – dùng để tính tỉ lệ khi tiến hóa
+    public long baseCooldown; // Chỉ số cooldown gốc – dùng để tính tỉ lệ khi tiến hóa
     public long lastShootTime = 0;
     public boolean isAutomatic;
     public float range;
-    public float baseRange;       // Chỉ số range gốc – dùng để tính tỉ lệ khi tiến hóa
+    public float baseRange; // Chỉ số range gốc – dùng để tính tỉ lệ khi tiến hóa
 
     public Weapon(String name, float damageMultiplier, long cooldown, boolean isAutomatic, float range) {
         this.name = name;
@@ -21,6 +21,10 @@ public abstract class Weapon {
         this.isAutomatic = isAutomatic;
         this.range = range;
         this.baseRange = range;
+    }
+
+    public int getProjectilesPerShot() {
+        return 1;
     }
 
     public long getActualCooldown(float fireRateBonus) {

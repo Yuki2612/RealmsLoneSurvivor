@@ -38,7 +38,7 @@ public class TeleporterBoss extends Enemy {
                 bomb.isExplosive = true;
                 bomb.explosionRadius = 100;
                 bomb.damage = 1;
-                bomb.expirationTime = System.currentTimeMillis() + 1000; // Nổ sau 1s
+                bomb.expirationTime = gameproject.GamePanel.getTickTime() + 1000; // Nổ sau 1s
                 mines.add(bomb);
 
                 // Dịch chuyển

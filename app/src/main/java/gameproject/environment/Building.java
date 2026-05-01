@@ -3,6 +3,7 @@ package gameproject.environment;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import gameproject.GamePanel;
 import java.awt.Rectangle;
 import gameproject.Player;
 
@@ -21,7 +22,7 @@ public class Building {
     private java.awt.geom.Area interiorArea;
     private java.awt.geom.Area roofArea;
     private java.util.List<DoorInfo> doors;
-    private float roofAlpha = 1.0f;
+    private volatile float roofAlpha = 1.0f;
     private float fadeSpeed = 0.05f;
     private int style;
 
@@ -63,24 +64,30 @@ public class Building {
         }
     }
 
+    public boolean isPlayerInside() {
+        return roofAlpha < 0.5f;
+    }
+
     public void renderFloor(Graphics2D g) {
         java.awt.image.BufferedImage floorImg = gameproject.ImageManager.get("floor");
         if (floorImg == null)
             return;
 
+        Graphics2D g2 = (Graphics2D) g.create();
+
         java.awt.Rectangle tileRect = new java.awt.Rectangle(0, 0, floorImg.getWidth(), floorImg.getHeight());
         java.awt.TexturePaint tp = new java.awt.TexturePaint(floorImg, tileRect);
 
-        g.setPaint(tp);
-        g.fill(interiorArea);
+        g2.setPaint(tp);
+        g2.fill(interiorArea);
 
         if (style == 2) {
-            g.setColor(new Color(0, 0, 0, 60));
-            g.fill(interiorArea);
+            g2.setColor(new Color(0, 0, 0, 60));
+            g2.fill(interiorArea);
         }
 
-        g.setColor(new Color(30, 30, 30, 150));
-        g.draw(interiorArea);
+        g2.setColor(new Color(30, 30, 30, 150));
+        g2.draw(interiorArea);
 
         // VẼ BẬC THỀM ĐI THEO CỬA (Dù là gian nào)
         int pSize = 128; // Tăng kích thước thềm để chìa ra khỏi mái
@@ -97,13 +104,14 @@ public class Building {
             else
                 pRect = new Rectangle(px + 64, py, pSize, pSize); // Side E
 
-            g.setColor(new Color(0, 0, 0, 50));
-            g.fillRect(pRect.x + 4, pRect.y + 4, pRect.width, pRect.height);
-            g.setPaint(tp);
-            g.fillRect(pRect.x, pRect.y, pRect.width, pRect.height);
-            g.setColor(new Color(30, 30, 30, 200));
-            g.drawRect(pRect.x, pRect.y, pRect.width, pRect.height);
+            g2.setColor(new Color(0, 0, 0, 50));
+            g2.fillRect(pRect.x + 4, pRect.y + 4, pRect.width, pRect.height);
+            g2.setPaint(tp);
+            g2.fillRect(pRect.x, pRect.y, pRect.width, pRect.height);
+            g2.setColor(new Color(30, 30, 30, 200));
+            g2.drawRect(pRect.x, pRect.y, pRect.width, pRect.height);
         }
+        g2.dispose();
     }
 
     public void renderRoof(Graphics2D g) {
@@ -111,22 +119,23 @@ public class Building {
             return;
 
         java.awt.image.BufferedImage roofImg = gameproject.ImageManager.get("roof");
-        java.awt.Shape oldClip = g.getClip();
+
+        Graphics2D g2 = (Graphics2D) g.create();
 
         if (roofAlpha > 0.5f) {
-            g.setColor(new Color(0, 0, 0, (int) (100 * roofAlpha)));
+            g2.setColor(new Color(0, 0, 0, (int) (100 * roofAlpha)));
             java.awt.geom.AffineTransform at = java.awt.geom.AffineTransform.getTranslateInstance(12, 12);
-            g.fill(roofArea.createTransformedArea(at));
+            g2.fill(roofArea.createTransformedArea(at));
         }
 
-        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, roofAlpha));
-        g.setClip(roofArea);
+        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, roofAlpha));
+        g2.setClip(roofArea);
 
         if (roofImg != null) {
             java.awt.Rectangle tileRect = new java.awt.Rectangle(0, 0, roofImg.getWidth(), roofImg.getHeight());
             java.awt.TexturePaint tp = new java.awt.TexturePaint(roofImg, tileRect);
-            g.setPaint(tp);
-            g.fill(roofArea);
+            g2.setPaint(tp);
+            g2.fill(roofArea);
         }
 
         // ĐÁNH BÓNG CẠNH DƯỚI (Mọi cạnh hướng xuống đều có bóng)
@@ -135,11 +144,10 @@ public class Building {
         java.awt.geom.Area shiftedArea = roofArea.createTransformedArea(shift);
         shiftedArea.subtract(roofArea); // Chỉ giữ lại phần chìa ra phía dưới
 
-        g.setColor(new Color(0, 0, 0, 80));
-        g.fill(shiftedArea);
+        g2.setColor(new Color(0, 0, 0, 80));
+        g2.fill(shiftedArea);
 
-        g.setClip(oldClip);
-        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
+        g2.dispose();
     }
 
     public void drawOnMinimap(Graphics2D g, int mapX, int mapY, float scaleX, float scaleY) {

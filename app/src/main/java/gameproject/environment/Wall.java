@@ -27,14 +27,17 @@ public class Wall extends Obstacle {
 
     @Override
     public void render(Graphics2D g) {
+        int dx = x;
+        int dy = y;
+
         java.awt.image.BufferedImage img = gameproject.ImageManager.get("wall");
         if (img != null) {
-            g.drawImage(img, x, y, width, height, null);
+            g.drawImage(img, dx, dy, width, height, null);
         } else {
             g.setColor(new Color(60, 60, 60)); // Màu xám tối cho tường
-            g.fillRect(x, y, width, height);
+            g.fillRect(dx, dy, width, height);
             g.setColor(Color.BLACK);
-            g.drawRect(x, y, width, height);
+            g.drawRect(dx, dy, width, height);
         }
 
         if (gameproject.GamePanel.showHitboxes && hitbox != null) {

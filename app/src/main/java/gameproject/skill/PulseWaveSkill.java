@@ -37,7 +37,7 @@ public class PulseWaveSkill implements PassiveSkill {
                     float dist = (float) Math
                             .sqrt(Math.pow(e.getX() - player.getX(), 2) + Math.pow(e.getY() - player.getY(), 2));
                     if (dist <= pulseRadius) {
-                        e.takeDamageBase(damage, vfxManager, currentTime, Color.CYAN);
+                        e.takeDamage(damage, vfxManager, currentTime);
                         e.applyKnockback(player.getX(), player.getY(), knockback);
                     }
                 }
@@ -47,7 +47,7 @@ public class PulseWaveSkill implements PassiveSkill {
 
     @Override
     public void draw(Graphics g, Player player) {
-        if (System.currentTimeMillis() < pulseRenderUntil) {
+        if (gameproject.GamePanel.getTickTime() < pulseRenderUntil) {
             g.setColor(new Color(0, 255, 255, 60));
             g.fillOval((int) lastPulseX - pulseRadius, (int) lastPulseY - pulseRadius, pulseRadius * 2,
                     pulseRadius * 2);

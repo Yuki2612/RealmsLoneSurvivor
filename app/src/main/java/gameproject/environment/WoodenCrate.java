@@ -29,18 +29,19 @@ public class WoodenCrate extends Obstacle {
 
     @Override
     public void render(Graphics2D g) {
+        int dx = x;
+        int dy = y;
+
         java.awt.image.BufferedImage img = gameproject.ImageManager.get("woodencrate");
         if (img != null) {
-            // Vẽ lấp đầy ô lưới
-            g.drawImage(img, x, y, width, height, null);
+            g.drawImage(img, dx, dy, width, height, null);
         } else {
             g.setColor(new Color(139, 69, 19)); // Màu nâu gỗ
-            g.fillRect(x + 2, y + 2, width - 4, height - 4);
+            g.fillRect(dx + 2, dy + 2, width - 4, height - 4);
             g.setColor(new Color(101, 50, 14));
-            g.drawRect(x + 2, y + 2, width - 4, height - 4);
-            // Vẽ thêm chữ X trên thùng cho đẹp
-            g.drawLine(x + 10, y + 10, x + width - 10, y + height - 10);
-            g.drawLine(x + width - 10, y + 10, x + 10, y + height - 10);
+            g.drawRect(dx + 2, dy + 2, width - 4, height - 4);
+            g.drawLine(dx + 10, dy + 10, dx + width - 10, dy + height - 10);
+            g.drawLine(dx + width - 10, dy + 10, dx + 10, dy + height - 10);
         }
 
         if (gameproject.GamePanel.showHitboxes && hitbox != null) {

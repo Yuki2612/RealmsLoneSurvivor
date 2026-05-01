@@ -57,40 +57,43 @@ public class Projectile {
         if (distTraveled > maxRange || x < 0 || x > worldWidth || y < 0 || y > worldHeight) {
             active = false;
         }
-        if (expirationTime > 0 && System.currentTimeMillis() > expirationTime) {
+        if (expirationTime > 0 && gameproject.GamePanel.getTickTime() > expirationTime) {
             active = false;
         }
     }
 
     public void draw(Graphics g) {
+        int drawX = (int) Math.round(x);
+        int drawY = (int) Math.round(y);
+
         if (isRailgun) {
             g.setColor(Color.CYAN);
-            g.fillRect((int) x, (int) y, size * 3, size * 3);
+            g.fillRect(drawX, drawY, size * 3, size * 3);
         } else if (isHellfire) {
             g.setColor(Color.MAGENTA);
-            g.fillOval((int) x, (int) y, size + 8, size + 8);
+            g.fillOval(drawX, drawY, size + 8, size + 8);
             g.setColor(Color.WHITE);
-            g.drawOval((int) x, (int) y, size + 8, size + 8);
+            g.drawOval(drawX, drawY, size + 8, size + 8);
         } else if (isPoisonous) {
             g.setColor(Color.GREEN);
-            g.fillOval((int) x, (int) y, size, size);
+            g.fillOval(drawX, drawY, size, size);
             g.setColor(new Color(0, 100, 0));
-            g.drawOval((int) x, (int) y, size, size);
+            g.drawOval(drawX, drawY, size, size);
         } else if (isExplosive) {
             g.setColor(Color.RED);
-            g.fillOval((int) x, (int) y, size + 4, size + 4);
+            g.fillOval(drawX, drawY, size + 4, size + 4);
             g.setColor(Color.YELLOW);
-            g.drawOval((int) x, (int) y, size + 4, size + 4);
+            g.drawOval(drawX, drawY, size + 4, size + 4);
         } else if (isShocking) {
             g.setColor(Color.YELLOW);
-            g.fillOval((int) x, (int) y, size + 2, size + 2);
+            g.fillOval(drawX, drawY, size + 2, size + 2);
             g.setColor(Color.CYAN);
-            g.drawOval((int) x, (int) y, size + 2, size + 2);
+            g.drawOval(drawX, drawY, size + 2, size + 2);
         } else {
             g.setColor(isEnemyBullet ? Color.ORANGE : Color.WHITE);
-            g.fillOval((int) x, (int) y, size, size);
+            g.fillOval(drawX, drawY, size, size);
             g.setColor(Color.BLACK);
-            g.drawOval((int) x, (int) y, size, size);
+            g.drawOval(drawX, drawY, size, size);
         }
     }
 

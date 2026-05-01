@@ -25,10 +25,11 @@ public class MapManager {
         }
 
         public boolean intersects(Room other) {
-            return !(this.col >= other.col + other.width + 10 ||
-                    this.col + this.width + 10 <= other.col ||
-                    this.row >= other.row + other.height + 10 ||
-                    this.row + this.height + 10 <= other.row);
+            int padding = 18; // Tăng từ 10 lên 18 để nhà thưa hơn
+            return !(this.col >= other.col + other.width + padding ||
+                    this.col + this.width + padding <= other.col ||
+                    this.row >= other.row + other.height + padding ||
+                    this.row + this.height + padding <= other.row);
         }
     }
 
@@ -80,7 +81,7 @@ public class MapManager {
 
     public void generateStructuredMap(List<Building> buildingList) {
         List<Room> rooms = new ArrayList<>();
-        int maxBuildings = 25; // Tăng số lượng nhà vì map to hơn
+        int maxBuildings = 18; // Giảm từ 25 xuống 18 để bản đồ thoáng hơn
         int attempts = 0;
 
         while (buildingList.size() < maxBuildings && attempts < 300) {
@@ -154,8 +155,8 @@ public class MapManager {
                         maxC = room.col + room.width;
                 }
 
-                // BƯỚC 2: XÓA VẬT THỂ XUNG QUANH (Clearance Zone 4 ô để nhà thoáng hơn)
-                int clearance = 4;
+                // BƯỚC 2: XÓA VẬT THỂ XUNG QUANH (Clearance Zone 6 ô để nhà thoáng hơn)
+                int clearance = 6;
                 for (int r = Math.max(0, minR - clearance); r < Math.min(rows, maxR + clearance); r++) {
                     for (int c = Math.max(0, minC - clearance); c < Math.min(cols, maxC + clearance); c++) {
                         grid[r][c].obstacle = null;

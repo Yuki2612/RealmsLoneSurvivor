@@ -9,6 +9,11 @@ public class Shotgun extends Weapon {
     }
 
     @Override
+    public int getProjectilesPerShot() {
+        return 3;
+    }
+
+    @Override
     public void shoot(float startX, float startY, float targetX, float targetY, float bulletSpeedMulti,
             int playerDamage, int bounces, ArrayList<Projectile> projectiles, long currentTime) {
         float dx = targetX - startX;

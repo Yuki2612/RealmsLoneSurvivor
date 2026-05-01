@@ -73,17 +73,21 @@ public class UpgradeManager {
         if (playerLevel % 3 == 0) {
             generateBreakthroughOptions(player);
         } else {
-            // Cấp bình thường sẽ bốc các thẻ tăng chỉ số
-            List<Upgrade> normals = new ArrayList<>();
-            for (Upgrade u : Upgrade.values()) {
-                if (!u.isBreakthrough && player.getUpgradeLevel(u) < u.maxLevel)
-                    normals.add(u);
-            }
-            Collections.shuffle(normals);
-            while (normals.size() < 3)
-                normals.add(Upgrade.SHIELD); // Fallback an toàn
-            currentUpgradeOptions = new Upgrade[] { normals.get(0), normals.get(1), normals.get(2) };
+            generateNormalOptions(player);
         }
+    }
+
+    public void generateNormalOptions(Player player) {
+        // Cấp bình thường sẽ bốc các thẻ tăng chỉ số
+        List<Upgrade> normals = new ArrayList<>();
+        for (Upgrade u : Upgrade.values()) {
+            if (!u.isBreakthrough && player.getUpgradeLevel(u) < u.maxLevel)
+                normals.add(u);
+        }
+        Collections.shuffle(normals);
+        while (normals.size() < 3)
+            normals.add(Upgrade.SHIELD); // Fallback an toàn
+        currentUpgradeOptions = new Upgrade[] { normals.get(0), normals.get(1), normals.get(2) };
     }
 
     public void generateBreakthroughOptions(Player player) {

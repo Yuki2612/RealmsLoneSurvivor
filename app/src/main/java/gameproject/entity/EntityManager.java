@@ -20,6 +20,7 @@ public class EntityManager {
     public ArrayList<HeartDrop> heartDrops = new ArrayList<>();
     public ArrayList<ChestDrop> weaponChests = new ArrayList<>();
     public ArrayList<ResourceDrop> resourceDrops = new ArrayList<>();
+    public ArrayList<EventTreasure> eventChests = new ArrayList<>();
     public int bossesKilled = 0;
 
     private long lastEnemySpawnTime;
@@ -36,6 +37,7 @@ public class EntityManager {
         synchronized (resourceDrops) {
             resourceDrops.clear();
         }
+        eventChests.clear();
         bossesKilled = 0;
         waveCount = startingWave - 1;
         currentSpawnInterval = 10000;
@@ -58,6 +60,10 @@ public class EntityManager {
         if (enemies.isEmpty() || currentTime - lastEnemySpawnTime >= currentSpawnInterval) {
             waveCount++;
             int waveSize = 2 + waveCount;
+            if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+                waveSize = (int)(waveSize * 1.5f);
+            }
             for (int i = 0; i < waveSize; i++) {
                 enemies.add(spawnSafeEnemy(player, panel, surviveTimeSeconds));
             }
@@ -82,7 +88,12 @@ public class EntityManager {
             }
 
             lastEnemySpawnTime = currentTime;
-            currentSpawnInterval = Math.min(10000 + ((waveCount - 1) * 5000), 25000);
+            long interval = Math.min(10000 + ((waveCount - 1) * 5000), 25000);
+            if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+                interval /= 1.5;
+            }
+            currentSpawnInterval = interval;
         }
 
         // 2. CẬP NHẬT KỸ NĂNG BỊ ĐỘNG
@@ -94,158 +105,152 @@ public class EntityManager {
         ArrayList<Projectile> pendingProjectiles = new ArrayList<>();
         ArrayList<Projectile> newEnemyProjectiles = new ArrayList<>();
         ArrayList<Enemy> newEnemies = new ArrayList<>();
-        Iterator<Projectile> pIt = projectiles.iterator();
-        while (pIt.hasNext()) {
-            Projectile p = pIt.next();
-            p.update(GamePanel.WORLD_WIDTH, GamePanel.WORLD_HEIGHT);
+        synchronized (projectiles) {
+            Iterator<Projectile> pIt = projectiles.iterator();
+            while (pIt.hasNext()) {
+                Projectile p = pIt.next();
+                p.update(GamePanel.WORLD_WIDTH, GamePanel.WORLD_HEIGHT);
 
-            // THÊM: Va chạm với vật cản trên Map (Tường/Thùng gỗ)
-            gameproject.environment.Obstacle obs = panel.mapManager.getObstacleAtWorld(p.getX(), p.getY());
-            if (obs != null && obs.isSolid()) {
-                obs.takeDamage(p.damage);
-                if (obs.isDestroyed() && obs instanceof gameproject.environment.WoodenCrate) {
-                    synchronized (resourceDrops) {
-                        // WoodenCrates drop 2-5 gold and 5% chance for a soul
-                        int goldToDrop = 2 + (int) (Math.random() * 4);
-                        spawnResource(p.getX(), p.getY(), ResourceDrop.Type.GOLD, goldToDrop, currentTime, 15000);
-                        if (Math.random() < 0.05) {
-                            spawnResource(p.getX(), p.getY(), ResourceDrop.Type.SOUL, 1, currentTime, 30000);
-                        }
-                    }
-                }
-                p.setActive(false);
-                // Nếu đạn nổ của địch trúng tường, cho nổ luôn
-                if (p.isEnemyBullet && p.isExplosive) {
-                    handleExplosiveEnemyBullet(p, player, vfxManager, currentTime, panel);
-                }
-            }
-
-            // Kiểm tra đạn nổ của địch khi hết tầm bay
-            if (!p.isActive() && p.isEnemyBullet && p.isExplosive) {
-                handleExplosiveEnemyBullet(p, player, vfxManager, currentTime, panel);
-                pIt.remove();
-                continue;
-            }
-
-            if (!p.isActive()) {
-                pIt.remove();
-                continue;
-            }
-
-            boolean hit = false;
-
-            // Phân luồng: Đạn địch bắn vào Player
-            if (p.isEnemyBullet) {
-                if (!player.isDashing() && !player.isInvulnerable() && p.getBounds().intersects(player.getBounds())) {
-                    if (p.isExplosive) {
-                        handleExplosiveEnemyBullet(p, player, vfxManager, currentTime, panel);
-                    } else {
-                        if (player.takeHit()) {
-                            panel.triggerGameOver();
-                        } else {
-                            vfxManager.triggerScreenShake(15);
+                // THÊM: Va chạm với vật cản trên Map (Tường/Thùng gỗ)
+                gameproject.environment.Obstacle obs = panel.mapManager.getObstacleAtWorld(p.getX(), p.getY());
+                if (obs != null && obs.isSolid()) {
+                    obs.takeDamage(p.damage);
+                    if (obs.isDestroyed() && obs instanceof gameproject.environment.WoodenCrate) {
+                        synchronized (resourceDrops) {
+                            // WoodenCrates drop 2-5 gold and 5% chance for a soul
+                            int goldToDrop = 2 + (int) (Math.random() * 4);
+                            spawnResource(p.getX(), p.getY(), ResourceDrop.Type.GOLD, goldToDrop, currentTime, 15000);
+                            if (Math.random() < 0.05) {
+                                spawnResource(p.getX(), p.getY(), ResourceDrop.Type.SOUL, 1, currentTime, 30000);
+                            }
                         }
                     }
                     p.setActive(false);
-                    hit = true;
+                    // Nếu đạn nổ của địch trúng tường, cho nổ luôn
+                    if (p.isEnemyBullet && p.isExplosive) {
+                        handleExplosiveEnemyBullet(p, player, vfxManager, currentTime, panel);
+                    }
                 }
-            }
-            // Phân luồng: Đạn Player bắn vào Địch
-            else {
-                if (p.isRailgun) {
-                    if (p.bouncesLeft == 1) {
-                        p.bouncesLeft = 0;
-                        float dx = p.speedX;
-                        float dy = p.speedY;
-                        float len = (float) Math.sqrt(dx * dx + dy * dy);
-                        if (len == 0)
-                            len = 1;
-                        float dirX = dx / len;
-                        float dirY = dy / len;
 
-                        float endX = p.startX + dirX * p.maxRange;
-                        float endY = p.startY + dirY * p.maxRange;
+                // Kiểm tra đạn nổ của địch khi hết tầm bay
+                if (!p.isActive() && p.isEnemyBullet && p.isExplosive) {
+                    handleExplosiveEnemyBullet(p, player, vfxManager, currentTime, panel);
+                    pIt.remove();
+                    continue;
+                }
 
-                        // --- Railgun Environment Interaction ---
-                        float currentEndX = endX;
-                        float currentEndY = endY;
+                if (!p.isActive()) {
+                    pIt.remove();
+                    continue;
+                }
 
-                        // Check for obstacles along the beam path
-                        int steps = 20;
-                        for (int s = 0; s <= steps; s++) {
-                            float checkX = p.startX + (dirX * p.maxRange * s / steps);
-                            float checkY = p.startY + (dirY * p.maxRange * s / steps);
-                            gameproject.environment.Obstacle wallObs = panel.mapManager.getObstacleAtWorld(checkX,
-                                    checkY);
-                            if (wallObs != null && wallObs.isSolid()) {
-                                currentEndX = checkX;
-                                currentEndY = checkY;
-                                wallObs.takeDamage(p.damage);
+                boolean hit = false;
+
+                // Phân luồng: Đạn địch bắn vào Player
+                if (p.isEnemyBullet) {
+                    if (!player.isDashing() && !player.isInvulnerable() && p.getBounds().intersects(player.getBounds())) {
+                        if (p.isExplosive) {
+                            handleExplosiveEnemyBullet(p, player, vfxManager, currentTime, panel);
+                        } else {
+                            if (player.takeHit()) {
+                                panel.triggerGameOver();
+                            } else {
+                                vfxManager.triggerScreenShake(15);
+                            }
+                        }
+                        p.setActive(false);
+                        hit = true;
+                    }
+                }
+                // Phân luồng: Đạn Player bắn vào Địch
+                else {
+                    if (p.isRailgun) {
+                        if (p.bouncesLeft == 1) {
+                            p.bouncesLeft = 0;
+                            float dx = p.speedX;
+                            float dy = p.speedY;
+                            float len = (float) Math.sqrt(dx * dx + dy * dy);
+                            if (len == 0)
+                                len = 1;
+                            float dirX = dx / len;
+                            float dirY = dy / len;
+
+                            float endX = p.startX + dirX * p.maxRange;
+                            float endY = p.startY + dirY * p.maxRange;
+
+                            // --- Railgun Environment Interaction ---
+                            float currentEndX = endX;
+                            float currentEndY = endY;
+
+                            // Check for obstacles along the beam path
+                            int steps = 20;
+                            for (int s = 0; s <= steps; s++) {
+                                float checkX = p.startX + (dirX * p.maxRange * s / steps);
+                                float checkY = p.startY + (dirY * p.maxRange * s / steps);
+                                gameproject.environment.Obstacle wallObs = panel.mapManager.getObstacleAtWorld(checkX,
+                                        checkY);
+                                if (wallObs != null && wallObs.isSolid()) {
+                                    currentEndX = checkX;
+                                    currentEndY = checkY;
+                                    wallObs.takeDamage(p.damage);
+                                    break;
+                                }
+                            }
+
+                            vfxManager.addLaser(p.startX, p.startY, currentEndX, currentEndY, currentTime);
+
+                            for (Enemy e : enemies) {
+                                if (!e.isDead() && distanceToLineSegment(e.getX() + e.size / 2, e.getY() + e.size / 2,
+                                        p.startX, p.startY, currentEndX, currentEndY) <= 40) {
+                                    e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                }
+                            }
+                        }
+                        p.setActive(false);
+                        hit = true;
+                    } else {
+                        for (Enemy e : enemies) {
+                            if (e != p.ignoredEnemy && p.getBounds().intersects(e.getBounds())) {
+                                e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                if (p.isShocking) {
+                                    e.applyShock(1000, vfxManager, enemies);
+                                }
+                                p.setActive(false);
+
+                                if (p.bouncesLeft > 0) {
+                                    float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels
+                                            .getOrDefault(gameproject.skill.Upgrade.CHAIN_LIGHTNING, 0) * 0.05f);
+                                    // Chain Lightning Range (Lv1: 250px Lv5: 650px)
+                                    float maxRange = (150.0f
+                                            + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
+                                                    * 100))
+                                            * soulMulti;
+                                    Enemy closest = getClosestEnemy(e, enemies, maxRange);
+                                    if (closest != null) {
+                                        Projectile bounceProj = new Projectile(e.getX(), e.getY(), closest.getX(),
+                                                closest.getY(),
+                                                1.5f, 300f);
+                                        bounceProj.isShocking = true;
+                                        bounceProj.damage = (int) ((Math.max(1, p.damage / 5)
+                                                // Lv1: +4 Lv5: +20
+                                                + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
+                                                        * 4))
+                                                * soulMulti);
+                                        bounceProj.bouncesLeft = p.bouncesLeft - 1;
+                                        bounceProj.ignoredEnemy = e;
+                                        pendingProjectiles.add(bounceProj);
+                                    }
+                                }
+                                hit = true;
                                 break;
                             }
                         }
-
-                        vfxManager.addLaser(p.startX, p.startY, currentEndX, currentEndY, currentTime);
-
-                        for (Enemy e : enemies) {
-                            if (!e.isDead() && distanceToLineSegment(e.getX() + e.size / 2, e.getY() + e.size / 2,
-                                    p.startX, p.startY, currentEndX, currentEndY) <= 40) {
-                                // Khi crit: bỏ qua white text (null vfxManager), chỉ hiện gold text
-                                e.takeDamage(p.damage, p.isCrit ? null : vfxManager, currentTime);
-                                if (p.isCrit) {
-                                    vfxManager.addCritDamageText(e.getX() + 15, e.getY() - 10, p.damage, currentTime);
-                                }
-                            }
-                        }
-                    }
-                    p.setActive(false);
-                    hit = true;
-                } else {
-                    for (Enemy e : enemies) {
-                        if (e != p.ignoredEnemy && p.getBounds().intersects(e.getBounds())) {
-                            // Khi crit: bỏ qua white text (null vfxManager), chỉ hiện gold text
-                            e.takeDamage(p.damage, p.isCrit ? null : vfxManager, currentTime);
-                            if (p.isCrit) {
-                                vfxManager.addCritDamageText(e.getX() + 15, e.getY() - 10, p.damage, currentTime);
-                            }
-                            if (p.isShocking) {
-                                e.applyShock(1000, vfxManager, enemies);
-                            }
-                            p.setActive(false);
-
-                            if (p.bouncesLeft > 0) {
-                                float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels
-                                        .getOrDefault(gameproject.skill.Upgrade.CHAIN_LIGHTNING, 0) * 0.05f);
-                                // Chain Lightning Range (Lv1: 250px Lv5: 650px)
-                                float maxRange = (150.0f
-                                        + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
-                                                * 100))
-                                        * soulMulti;
-                                Enemy closest = getClosestEnemy(e, enemies, maxRange);
-                                if (closest != null) {
-                                    Projectile bounceProj = new Projectile(e.getX(), e.getY(), closest.getX(),
-                                            closest.getY(),
-                                            1.5f, 300f);
-                                    bounceProj.isShocking = true;
-                                    bounceProj.damage = (int) ((Math.max(1, p.damage / 5)
-                                            // Lv1: +4 Lv5: +20
-                                            + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
-                                                    * 4))
-                                            * soulMulti);
-                                    bounceProj.bouncesLeft = p.bouncesLeft - 1;
-                                    bounceProj.ignoredEnemy = e;
-                                    pendingProjectiles.add(bounceProj);
-                                }
-                            }
-                            hit = true;
-                            break;
-                        }
                     }
                 }
-            }
 
-            if (hit)
-                pIt.remove();
+                if (hit)
+                    pIt.remove();
+            }
         }
         projectiles.addAll(pendingProjectiles);
 
@@ -280,9 +285,17 @@ public class EntityManager {
                                         60000);
                             }
                         } else {
-                            if (Math.random() < 0.25) {
+                            float dropChance = 0.25f;
+                            int lootMult = 1;
+                            if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
+                                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+                                dropChance = 0.45f;
+                                lootMult = 2;
+                            }
+
+                            if (Math.random() < dropChance) {
                                 synchronized (resourceDrops) {
-                                    spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, 1, currentTime,
+                                    spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, 1 * lootMult, currentTime,
                                             20000);
                                 }
                             }
@@ -300,12 +313,18 @@ public class EntityManager {
                             skill.onEnemyDeath(enemy, player, enemies, vfxManager, currentTime);
                         }
                         player.getComboManager().onEnemyKilled(enemy.isBoss);
+
                         enemies.remove(enemy);
                     }
                     continue;
                 }
 
                 float currentEnemySpeedMulti = speedMultiplier;
+                if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
+                    gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE && !enemy.isBoss) {
+                    currentEnemySpeedMulti *= 1.25f;
+                }
+                
                 if (enemy.chillEndTime > currentTime)
                     currentEnemySpeedMulti *= 0.7f;
                 if (enemy.inAcidZone)
@@ -405,17 +424,27 @@ public class EntityManager {
             while (cIt.hasNext()) {
                 ChestDrop chest = cIt.next();
                 if (currentTime > chest.expirationTime) {
-                cIt.remove();
-                continue;
-            }
-            if (player.getBounds().intersects(chest.getBounds())) {
-                if (chest.isRare) {
-                    panel.openWeaponSelect();
-                } else {
-                    panel.triggerBreakthroughUpgrade();
+                    cIt.remove();
+                    continue;
                 }
-                cIt.remove();
+                if (player.getBounds().intersects(chest.getBounds())) {
+                    if (chest.isRare) {
+                        panel.openWeaponSelect();
+                    } else {
+                        panel.triggerBreakthroughUpgrade();
+                    }
+                    cIt.remove();
+                }
             }
+        }
+
+        // Xử lý Event Treasure
+        Iterator<EventTreasure> etIt = eventChests.iterator();
+        while (etIt.hasNext()) {
+            EventTreasure et = etIt.next();
+            if (player.getBounds().intersects(et.getBounds())) {
+                et.interact(panel);
+                etIt.remove();
             }
         }
     }
@@ -512,28 +541,37 @@ public class EntityManager {
 
     public void drawGroundItems(Graphics g) {
         synchronized (weaponChests) {
-            for (ChestDrop chest : weaponChests) {
-                java.awt.image.BufferedImage chestImg = gameproject.ImageManager
-                        .get(chest.isRare ? "chest2" : "chest1");
-                if (chestImg != null) {
-                    g.drawImage(chestImg, (int) chest.x, (int) chest.y, 40, 40, null);
+            for (ChestDrop c : weaponChests) {
+                int dx = (int) Math.round(c.x);
+                int dy = (int) Math.round(c.y);
+                java.awt.image.BufferedImage img = gameproject.ImageManager.get(c.isRare ? "chest2" : "chest1");
+                if (img != null) {
+                    g.drawImage(img, dx, dy, 40, 40, null);
                 } else {
-                    g.setColor(chest.isRare ? java.awt.Color.MAGENTA : java.awt.Color.ORANGE);
-                    g.fillRect((int) chest.x, (int) chest.y, 40, 40);
+                    g.setColor(c.isRare ? java.awt.Color.MAGENTA : java.awt.Color.ORANGE);
+                    g.fillRect(dx, dy, 40, 40);
                     g.setColor(java.awt.Color.WHITE);
-                    g.drawString(chest.isRare ? "RARE" : "CHEST", (int) chest.x - 5, (int) chest.y - 5);
+                    g.drawString(c.isRare ? "RARE" : "CHEST", dx - 5, dy - 5);
                 }
+            }
+        }
+
+        synchronized (eventChests) {
+            for (EventTreasure et : eventChests) {
+                et.draw((java.awt.Graphics2D) g);
             }
         }
 
         synchronized (heartDrops) {
             for (HeartDrop hd : heartDrops) {
+                int hdx = (int) Math.round(hd.x);
+                int hdy = (int) Math.round(hd.y);
                 java.awt.image.BufferedImage heartImg = gameproject.ImageManager.get("heart");
                 if (heartImg != null) {
-                    g.drawImage(heartImg, (int) hd.x - 2, (int) hd.y - 2, 20, 20, null);
+                    g.drawImage(heartImg, hdx - 2, hdy - 2, 20, 20, null);
                 } else {
                     g.setColor(java.awt.Color.PINK);
-                    g.fillRect((int) hd.x, (int) hd.y, 15, 15);
+                    g.fillRect(hdx, hdy, 15, 15);
                 }
             }
         }
@@ -563,7 +601,7 @@ public class EntityManager {
         return (float) Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
     }
 
-    private void spawnResource(float x, float y, ResourceDrop.Type type, int amount, long currentTime, long duration) {
+    public void spawnResource(float x, float y, ResourceDrop.Type type, int amount, long currentTime, long duration) {
         int cap = (type == ResourceDrop.Type.GOLD) ? 100 : 10;
         int remaining = amount;
         while (remaining > 0) {

@@ -38,15 +38,17 @@ public class Tree extends Obstacle {
 
     @Override
     public void render(Graphics2D g) {
+        int dx = x;
+        int dy = y;
+
         java.awt.image.BufferedImage img = gameproject.ImageManager.get("tree");
         if (img != null) {
-            // Vẽ cực to (192x192, lệch ra ngoài 64px mỗi chiều để căn giữa vào ô 64x64)
-            g.drawImage(img, x - 64, y - 64, 192, 192, null);
+            g.drawImage(img, dx - 64, dy - 64, 192, 192, null);
         } else {
-            g.setColor(new Color(34, 139, 34)); // Màu xanh lá cây (Forest Green)
-            g.fillOval(x + 5, y + 5, width - 10, height - 10);
+            g.setColor(new Color(34, 139, 34));
+            g.fillOval(dx + 5, dy + 5, width - 10, height - 10);
             g.setColor(new Color(0, 100, 0));
-            g.drawOval(x + 5, y + 5, width - 10, height - 10);
+            g.drawOval(dx + 5, dy + 5, width - 10, height - 10);
         }
 
         if (gameproject.GamePanel.showHitboxes && hitbox != null) {

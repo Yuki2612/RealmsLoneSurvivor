@@ -48,6 +48,7 @@ public abstract class Enemy implements gameproject.Renderable {
 
     private long lastBurnTick = 0;
     private long lastPlasmaTick = 0;
+    private long lastPoisonTick = 0;
     public boolean triggerCorrosiveMelt = false;
 
     public long thermalShockCooldown = 0;
@@ -105,64 +106,72 @@ public abstract class Enemy implements gameproject.Renderable {
 
     public void updateStatusEffects(long currentTime, VFXManager vfxManager) {
         if (burnEndTime > currentTime && currentTime - lastBurnTick >= 500) {
-            // Burn DoT: 33% playerDamage/tick (~0.66x/s) – hiệu ứng phụ, không quá mạnh
-            takeDamageBase(Math.max(3, playerDamageCache / 3), vfxManager, currentTime, Color.ORANGE);
+            // Burn DoT: 33% playerDamage/tick
+            takeDamage(Math.max(3, playerDamageCache / 3), vfxManager, currentTime);
             lastBurnTick = currentTime;
         }
         if (plasmaEndTime > currentTime && currentTime - lastPlasmaTick >= 500) {
-            // Plasma DoT: 50% playerDamage/tick (~1x/s) – phản ứng cấp cao, mạnh hơn Burn
-            takeDamageBase(Math.max(5, playerDamageCache / 2), vfxManager, currentTime, Color.YELLOW);
+            // Plasma DoT: 50% playerDamage/tick
+            takeDamage(Math.max(5, playerDamageCache / 2), vfxManager, currentTime);
             lastPlasmaTick = currentTime;
+        }
+        if (poisonEndTime > currentTime && currentTime - lastPoisonTick >= 500) {
+            // Poison DoT: 20% playerDamage/tick
+            takeDamage(Math.max(2, playerDamageCache / 5), vfxManager, currentTime);
+            lastPoisonTick = currentTime;
         }
     }
 
     public void applyBurn(long duration, VFXManager vfxManager) {
-        if (chillEndTime > System.currentTimeMillis() && System.currentTimeMillis() > thermalShockCooldown) {
+        long now = gameproject.GamePanel.getTickTime();
+        if (chillEndTime > now && now > thermalShockCooldown) {
             chillEndTime = 0;
             burnEndTime = 0;
-            thermalShockCooldown = System.currentTimeMillis() + 3000;
-            // Thermal Shock: 5x playerDamage – combo mạnh, scale cùng player
-            takeDamageBase(playerDamageCache * 3, vfxManager, System.currentTimeMillis(), Color.WHITE);
-            freezeEndTime = System.currentTimeMillis() + 1500;
+            thermalShockCooldown = now + 3000;
+            // Thermal Shock: 3x playerDamage
+            takeDamage(playerDamageCache * 3, vfxManager, now);
+            freezeEndTime = now + 1500;
         } else {
-            burnEndTime = Math.max(burnEndTime, System.currentTimeMillis() + duration);
+            burnEndTime = Math.max(burnEndTime, now + duration);
         }
     }
 
     public void applyChill(long duration, VFXManager vfxManager) {
-        if (burnEndTime > System.currentTimeMillis() && System.currentTimeMillis() > thermalShockCooldown) {
+        long now = gameproject.GamePanel.getTickTime();
+        if (burnEndTime > now && now > thermalShockCooldown) {
             chillEndTime = 0;
             burnEndTime = 0;
-            thermalShockCooldown = System.currentTimeMillis() + 3000;
-            // Thermal Shock: 5x playerDamage – combo mạnh, scale cùng player
-            takeDamageBase(playerDamageCache * 3, vfxManager, System.currentTimeMillis(), Color.WHITE);
-            freezeEndTime = System.currentTimeMillis() + 1500;
+            thermalShockCooldown = now + 3000;
+            // Thermal Shock: 3x playerDamage
+            takeDamage(playerDamageCache * 3, vfxManager, now);
+            freezeEndTime = now + 1500;
         } else {
-            chillEndTime = Math.max(chillEndTime, System.currentTimeMillis() + duration);
+            chillEndTime = Math.max(chillEndTime, now + duration);
         }
     }
 
     public void applyPoison(long duration) {
-        poisonEndTime = Math.max(poisonEndTime, System.currentTimeMillis() + duration);
+        poisonEndTime = Math.max(poisonEndTime, gameproject.GamePanel.getTickTime() + duration);
     }
 
     public void applyShock(long duration, VFXManager vfxManager, ArrayList<Enemy> enemies) {
-        if (poisonEndTime > System.currentTimeMillis() && System.currentTimeMillis() > plasmaCooldown) {
-            plasmaCooldown = System.currentTimeMillis() + 4000;
-            plasmaEndTime = System.currentTimeMillis() + 2000;
+        long now = gameproject.GamePanel.getTickTime();
+        if (poisonEndTime > now && now > plasmaCooldown) {
+            plasmaCooldown = now + 4000;
+            plasmaEndTime = now + 2000;
             int count = 0;
             for (Enemy e : enemies) {
                 if (e != this && !e.isDead() && count < 5) {
                     float dist = (float) Math.sqrt(Math.pow(e.x - x, 2) + Math.pow(e.y - y, 2));
                     if (dist < 150) {
                         e.applyPoison(2000);
-                        e.plasmaEndTime = System.currentTimeMillis() + 2000;
+                        e.plasmaEndTime = gameproject.GamePanel.getTickTime() + 2000;
                         count++;
                     }
                 }
             }
         } else {
-            shockEndTime = Math.max(shockEndTime, System.currentTimeMillis() + duration);
+            shockEndTime = Math.max(shockEndTime, gameproject.GamePanel.getTickTime() + duration);
         }
     }
 
@@ -185,11 +194,25 @@ public abstract class Enemy implements gameproject.Renderable {
         }
     }
 
-    public void takeDamage(int damage, VFXManager vfxManager, long currentTime) {
+    public void takeDamage(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
         if (poisonEndTime > currentTime) {
-            damage = (int) (damage * 1.3f);
+            damage = (int) (damage * 1.3f); // Damage stack: Crit * Poison Multi
         }
-        takeDamageBase(damage, vfxManager, currentTime, poisonEndTime > currentTime ? Color.GREEN : Color.WHITE);
+
+        if (isCrit) {
+            // Hiển thị màu đặc biệt khi Crit + Poison (Vàng chanh)
+            Color critColor = (poisonEndTime > currentTime) ? new Color(180, 255, 0) : new Color(255, 220, 0);
+            if (vfxManager != null) {
+                vfxManager.addCritDamageText(this.x + 15, this.y - 10, damage, currentTime, critColor);
+            }
+            takeDamageBase(damage, null, currentTime, critColor);
+        } else {
+            takeDamageBase(damage, vfxManager, currentTime, poisonEndTime > currentTime ? Color.GREEN : Color.WHITE);
+        }
+    }
+
+    public void takeDamage(int damage, VFXManager vfxManager, long currentTime) {
+        takeDamage(damage, false, vfxManager, currentTime);
     }
 
     public void takeDamageBase(int damage, VFXManager vfxManager, long currentTime, Color textColor) {
@@ -219,9 +242,9 @@ public abstract class Enemy implements gameproject.Renderable {
     public boolean shouldRemove() {
         if (hp <= 0 && !isDying) {
             isDying = true;
-            deathFadeStartTime = System.currentTimeMillis();
+            deathFadeStartTime = gameproject.GamePanel.getTickTime();
         }
-        return isDying && (System.currentTimeMillis() - deathFadeStartTime >= deathFadeDuration);
+        return isDying && (gameproject.GamePanel.getTickTime() - deathFadeStartTime >= deathFadeDuration);
     }
 
     public float getX() {
@@ -241,7 +264,7 @@ public abstract class Enemy implements gameproject.Renderable {
     }
 
     protected void drawSprite(Graphics g, String imageKey) {
-        long now = System.currentTimeMillis();
+        long now = gameproject.GamePanel.getTickTime();
         java.awt.image.BufferedImage img = ImageManager.get(imageKey);
         Graphics2D g2d = (Graphics2D) g;
 
@@ -253,11 +276,21 @@ public abstract class Enemy implements gameproject.Renderable {
         g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, alpha));
 
         if (img != null) {
-            int drawX = (int) x - 10;
-            int drawY = (int) y - 20;
+            // QUY CHUẨN PIXEL-PERFECT: round(World) phối hợp với Snapped Translation
+            int drawX = (int) Math.round(x) - 10;
+            int drawY = (int) Math.round(y) - 20;
             int drawW = size + 20;
             int drawH = size + 20;
+
+            // 1. Hiệu ứng Blood Moon Aura (Vòng tròn đỏ dưới chân)
+            if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE && !isBoss) {
+                g2d.setColor(new Color(255, 0, 0, (int)(70 * alpha)));
+                g2d.fillOval((int)x - 5, (int)y + size - 10, size + 10, 15);
+            }
+
             g2d.drawImage(img, drawX, drawY, drawW, drawH, null);
+
 
             // Hit flash: vẽ lớp trắng bán trong suốt lên trên sprite
             if (now < hitFlashEndTime) {

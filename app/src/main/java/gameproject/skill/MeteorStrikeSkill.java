@@ -38,7 +38,7 @@ public class MeteorStrikeSkill implements PassiveSkill {
                 for (Enemy e : enemies) {
                     float dist = (float) Math.sqrt(Math.pow(e.getX() - targetX, 2) + Math.pow(e.getY() - targetY, 2));
                     if (dist <= radius) {
-                        e.takeDamageBase(damage, vfxManager, currentTime, java.awt.Color.ORANGE);
+                        e.takeDamage(damage, vfxManager, currentTime);
                         e.applyBurn(3000, vfxManager); // Meteor applies burn
                     }
                 }

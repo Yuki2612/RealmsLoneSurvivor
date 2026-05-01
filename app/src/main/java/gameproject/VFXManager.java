@@ -53,7 +53,6 @@ public class VFXManager {
         }
     }
 
-    /** Particle bụi / máu khi quái chết hoặc bị hit */
     public static class Particle {
         public float x, y, vx, vy;
         public long expireTime;
@@ -67,7 +66,6 @@ public class VFXManager {
         }
     }
 
-    /** Afterimage của Player khi dash */
     public static class DashAfterimage {
         public float x, y;
         public long expireTime;
@@ -78,7 +76,6 @@ public class VFXManager {
         }
     }
 
-    /** Banner thông báo Wave / Boss */
     public static class WaveBanner {
         public String text;
         public Color color;
@@ -112,8 +109,14 @@ public class VFXManager {
     private int shakeTimer = 0;
     private int currentDx = 0, currentDy = 0;
 
-    // Player-damage screen flash (red vignette)
+    private long flashEndTime = 0;
+    private int flashDuration = 1000;
     private long playerDamageFlashEndTime = 0;
+
+    private RadialGradientPaint cachedComboPaint = null;
+    private float cachedComboRadius = -1;
+    
+    private java.awt.image.BufferedImage darknessVignette = null;
 
     // ── Public API ─────────────────────────────────────────────────
 
@@ -125,7 +128,6 @@ public class VFXManager {
 
     public void addExplosion(float x, float y, float radius, long currentTime) {
         fireZones.add(new FireZone(x - radius / 2, y - radius / 2, currentTime + 200, true, false, (int) radius));
-        // Particle burst cho explosion
         spawnParticleBurst(x, y, 12, currentTime, new Color(255, 100, 0), new Color(255, 220, 50), 5, 8, 500);
     }
 
@@ -152,27 +154,27 @@ public class VFXManager {
         addDamageText(x, y, damage, currentTime, Color.WHITE);
     }
 
-    /** Crit damage text — vàng, lớn hơn, có prefix "!" */
-    public void addCritDamageText(float x, float y, int damage, long currentTime) {
+    public void addCritDamageText(float x, float y, int damage, long currentTime, Color color) {
         if (!showDamageText) return;
         float ox = (float) (Math.random() * 20 - 10);
         float oy = (float) (Math.random() * 10 - 5);
-        damageTexts.add(new DamageText(x + ox, y + oy, damage, currentTime, new Color(255, 220, 0), true));
+        damageTexts.add(new DamageText(x + ox, y + oy, damage, currentTime, color, true));
     }
 
-    /** Particle burst khi quái chết — 200ms khớp với death fade 150ms */
+    public void addCritDamageText(float x, float y, int damage, long currentTime) {
+        addCritDamageText(x, y, damage, currentTime, new Color(255, 220, 0));
+    }
+
     public void spawnDeathParticles(float x, float y, long currentTime, Color baseColor) {
         spawnParticleBurst(x, y, 8, currentTime, baseColor, Color.WHITE, 2, 4, 200);
     }
 
-    /** Dash afterimage: gọi mỗi frame khi player đang dash */
     public void addDashAfterimage(float playerX, float playerY, long currentTime) {
         afterimages.add(new DashAfterimage(playerX, playerY, currentTime));
     }
 
-    /** Wave/Boss announce banner */
     public void showWaveBanner(String text, Color color, long currentTime) {
-        waveBanners.clear(); // Xóa banner cũ nếu còn
+        waveBanners.clear();
         waveBanners.add(new WaveBanner(text, color, currentTime));
     }
 
@@ -181,24 +183,18 @@ public class VFXManager {
             double angle = Math.random() * 2 * Math.PI;
             float speed = 0.5f + (float) (Math.random() * 1.5f);
             float vx = (float) Math.cos(angle) * speed;
-            float vy = (float) Math.sin(angle) * speed - 1.2f; // Bay lên mạnh hơn
+            float vy = (float) Math.sin(angle) * speed - 1.2f;
             
             Color pColor = color;
             int sz = 3;
             int life = 600;
-            
-            // Nếu là Tier 1, tạo hiệu ứng gió (màu trắng/xanh nhạt)
             if (tier == 1) {
                 pColor = new Color(200, 240, 255, 180);
-                sz = 2;
-                life = 800;
+                sz = 2; life = 800;
             }
-            
             particles.add(new Particle(cx, cy, vx, vy, currentTime, pColor, sz, life));
         }
     }
-
-    // ── Private helpers ────────────────────────────────────────────
 
     private void spawnParticleBurst(float cx, float cy, int count, long currentTime,
                                     Color color1, Color color2, int minSize, int maxSize, int lifespanMs) {
@@ -212,8 +208,6 @@ public class VFXManager {
             particles.add(new Particle(cx, cy, vx, vy, currentTime, c, sz, lifespanMs));
         }
     }
-
-    // ── Update ─────────────────────────────────────────────────────
 
     public void update(long currentTime) {
         synchronized (fireZones) { fireZones.removeIf(fz -> currentTime > fz.expireTime); }
@@ -235,15 +229,10 @@ public class VFXManager {
             while (pIt.hasNext()) {
                 Particle p = pIt.next();
                 if (currentTime > p.expireTime) { pIt.remove(); continue; }
-                p.x += p.vx;
-                p.y += p.vy;
-                p.vy += 0.12f; // nhẹ gravity
-                p.vx *= 0.92f;
+                p.x += p.vx; p.y += p.vy; p.vy += 0.12f; p.vx *= 0.92f;
             }
         }
     }
-
-    // ── Screen shake ───────────────────────────────────────────────
 
     public void applyScreenShake(Graphics2D g2d) {
         if (shakeTimer > 0) {
@@ -260,13 +249,10 @@ public class VFXManager {
         if (currentDx != 0 || currentDy != 0) g2d.translate(-currentDx, -currentDy);
     }
 
-    // ── Draw ───────────────────────────────────────────────────────
-
     public void draw(Graphics g, Player player) {
         Graphics2D g2d = (Graphics2D) g;
         g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
-        // 1. Dash afterimages
         synchronized (afterimages) {
             for (DashAfterimage a : afterimages) {
                 java.awt.image.BufferedImage img = ImageManager.get(PlayerData.getPlayerImageKey());
@@ -279,7 +265,6 @@ public class VFXManager {
             }
         }
 
-        // 2. Lasers
         synchronized (lasers) {
             for (LaserVFX l : lasers) {
                 g2d.setColor(new Color(0, 255, 255, 220));
@@ -292,19 +277,14 @@ public class VFXManager {
             }
         }
 
-        // 3. Fire zones / acid / explosion
         synchronized (fireZones) {
             for (FireZone fz : fireZones) {
                 if (fz.isExplosion) {
                     g.setColor(new Color(255, 50, 50, 150));
                     g.fillOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
-                    g.setColor(new Color(255, 200, 0, 100));
-                    g.drawOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
                 } else if (fz.isAcid) {
                     g.setColor(new Color(50, 255, 50, 80));
                     g.fillOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
-                    g.setColor(new Color(0, 255, 0, 150));
-                    g.drawOval((int) fz.x, (int) fz.y, fz.radius, fz.radius);
                 } else {
                     g.setColor(new Color(255, 100, 0, 150));
                     g.fillRect((int) fz.x, (int) fz.y, fz.radius, fz.radius);
@@ -312,7 +292,6 @@ public class VFXManager {
             }
         }
 
-        // 4. Particles
         synchronized (particles) {
             for (Particle p : particles) {
                 g2d.setColor(p.color);
@@ -320,91 +299,132 @@ public class VFXManager {
             }
         }
 
-        // 5. Damage texts
         if (showDamageText) {
             synchronized (damageTexts) {
                 for (DamageText dt : damageTexts) {
-                    if (dt.isCrit) {
-                        g2d.setFont(FontManager.getFont(22f));
-                        String text = "! " + dt.damage;
-                        g2d.setColor(new Color(80, 60, 0));
-                        g2d.drawString(text, (int) dt.x + 2, (int) dt.y + 2);
-                        g2d.setColor(new Color(255, 220, 0));
-                        g2d.drawString(text, (int) dt.x, (int) dt.y);
-                    } else if (dt.color == Color.WHITE && dt.damage >= 300) {
-                        g2d.setFont(FontManager.getFont(20f));
-                        String text = String.valueOf(dt.damage);
-                        g2d.setColor(Color.BLACK);
-                        for (int dx = -2; dx <= 2; dx++)
-                            for (int dy = -2; dy <= 2; dy++)
-                                if (dx != 0 || dy != 0)
-                                    g2d.drawString(text, (int) dt.x + dx, (int) dt.y + dy);
-                        g2d.setColor(Color.WHITE);
-                        g2d.drawString(text, (int) dt.x, (int) dt.y);
-                    } else {
-                        g2d.setFont(FontManager.getFont(15f));
-                        String text = String.valueOf(dt.damage);
-                        g2d.setColor(Color.BLACK);
-                        g2d.drawString(text, (int) dt.x + 1, (int) dt.y + 1);
-                        g2d.setColor(dt.color);
-                        g2d.drawString(text, (int) dt.x, (int) dt.y);
-                    }
+                    g2d.setFont(FontManager.getFont(dt.isCrit ? 22f : 15f));
+                    String text = (dt.isCrit ? "! " : "") + dt.damage;
+                    g2d.setColor(Color.BLACK);
+                    g2d.drawString(text, (int) dt.x + 1, (int) dt.y + 1);
+                    g2d.setColor(dt.color);
+                    g2d.drawString(text, (int) dt.x, (int) dt.y);
                 }
             }
         }
     }
 
-    /** Vẽ sau cùng (overlay toàn màn hình) — gọi SAU resetScreenShake */
-    public void drawOverlays(Graphics g, int screenW, int screenH, long currentTime, Player player) {
+    private void initDarknessVignette(int screenW, int screenH) {
+        int vSize = (int) (Math.sqrt(screenW * screenW + screenH * screenH) * 1.5f);
+        darknessVignette = new java.awt.image.BufferedImage(vSize, vSize, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2 = darknessVignette.createGraphics();
+
+        float visionRadius = 110f;
+        float blurRadius = 260f;
+        float center = vSize / 2f;
+
+        float[] fractions = { 0.0f, (visionRadius * 0.7f) / center, visionRadius / center, blurRadius / center, 1.0f };
+        Color[] colors = { new Color(0,0,0,0), new Color(0,0,0,0), new Color(0,0,0,120), Color.BLACK, Color.BLACK };
+
+        RadialGradientPaint paint = new RadialGradientPaint(new Point2D.Float(center, center), center, fractions, colors);
+        g2.setPaint(paint);
+        g2.fillRect(0, 0, vSize, vSize);
+        g2.dispose();
+    }
+
+    public void drawOverlays(Graphics g, int screenW, int screenH, long currentTime, gameproject.GamePanel game) {
         Graphics2D g2d = (Graphics2D) g;
 
-        // Player damage flash (red vignette)
+        // 1. Flash
         if (currentTime < playerDamageFlashEndTime) {
-            float alpha = 0.35f * (float)(playerDamageFlashEndTime - currentTime) / 350f;
+            float alpha = 0.35f * (float) (playerDamageFlashEndTime - currentTime) / 350f;
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.min(0.35f, alpha)));
             g2d.setColor(Color.RED);
             g2d.fillRect(0, 0, screenW, screenH);
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
         }
 
-        // Tier 3 Pulsing Radial Vignette - Responsive Fit
-        if (player.getComboManager().getTier() >= 3) {
-            float pulse = (float) (Math.sin(currentTime / 150.0) * 0.2f + 0.4f); // Alpha 0.2 to 0.6
-            float[] fractions = {0.0f, 0.6f, 1.0f}; // 60% center clear, 40% edges colored
-            Color[] colors = {
-                new Color(0, 0, 0, 0), 
-                new Color(0, 0, 0, 0), 
-                new Color(255, 140, 0, (int)(pulse * 255)) 
-            };
-            
-            Point2D center = new Point2D.Float(screenW / 2f, screenH / 2f);
-            // Bán kính bằng chính xác khoảng cách từ tâm đến góc màn hình để fit mọi tỉ lệ
+        // 2. Combo Tier 3
+        if (game.player.getComboManager().getTier() >= 3) {
+            float pulse = (float) (Math.sin(currentTime / 150.0) * 0.2f + 0.4f);
             float radius = (float) Math.sqrt(screenW * screenW + screenH * screenH) / 2.0f;
-            
-            RadialGradientPaint paint = new RadialGradientPaint(center, radius, fractions, colors);
-            g2d.setPaint(paint);
+            if (radius != cachedComboRadius || cachedComboPaint == null) {
+                cachedComboRadius = radius;
+                float[] fr = { 0.0f, 0.6f, 1.0f };
+                Color[] cl = { new Color(0,0,0,0), new Color(0,0,0,0), new Color(255, 140, 0, 255) };
+                cachedComboPaint = new RadialGradientPaint(new Point2D.Float(screenW/2f, screenH/2f), radius, fr, cl);
+            }
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, pulse));
+            g2d.setPaint(cachedComboPaint);
             g2d.fillRect(0, 0, screenW, screenH);
-            g2d.setPaint(null); 
+            g2d.setPaint(null);
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
         }
 
-        // Wave banners
+        // 3. Acid Rain
+        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.ACID_RAIN &&
+            gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+            g2d.setColor(new Color(150, 255, 0, 40));
+            g2d.fillRect(0, 0, screenW, screenH);
+            g2d.setColor(new Color(100, 255, 50, 100));
+            for (int i = 0; i < 30; i++) {
+                int rx = (int) ((currentTime / 20 + i * 137) % screenW);
+                int ry = (int) ((currentTime / 2 + i * 89) % screenH);
+                g2d.drawLine(rx, ry, rx - 2, ry + 10);
+            }
+        }
+
+        // 4. Darkness
+        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS &&
+            gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+            if (darknessVignette == null) initDarknessVignette(screenW, screenH);
+            int screenX = (int) Math.round(game.player.getX() + game.player.getBounds().width / 2f) - game.camIntX;
+            int screenY = (int) Math.round(game.player.getY() + game.player.getBounds().height / 2f) - game.camIntY;
+            g2d.drawImage(darknessVignette, screenX - darknessVignette.getWidth()/2, screenY - darknessVignette.getHeight()/2, null);
+        } else if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS &&
+                   gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.WARNING) {
+            g2d.setColor(new Color(0, 0, 0, 80));
+            g2d.fillRect(0, 0, screenW, screenH);
+        } else if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+            
+            boolean highTier = game.player.getComboManager().getTier() >= 3;
+            
+            // 1. Tông màu đỏ toàn màn hình (Giảm độ đậm nếu đang có Combo Tier 3 để tránh lóa)
+            g2d.setColor(new Color(180, 0, 0, highTier ? 12 : 25));
+            g2d.fillRect(0, 0, screenW, screenH);
+            
+            // 2. Viền đỏ pulsing (Blood Vignette) - Crimson Deep Red
+            float basePulse = (float) (Math.sin(currentTime / 200.0) * 0.12f + 0.3f);
+            float pulse = highTier ? basePulse * 0.6f : basePulse; // Giảm rung lắc nếu đang combo cao
+            
+            // Bán kính lớn hơn Combo Tier 3 một chút để tạo lớp phủ bên ngoài
+            float radius = (float) Math.sqrt(screenW * screenW + screenH * screenH) / 1.3f;
+            
+            float[] fr = { 0.0f, 0.65f, 1.0f };
+            // Dùng màu Crimson đậm để phân biệt với màu Cam của Combo
+            Color[] cl = { new Color(0,0,0,0), new Color(100, 0, 0, 0), new Color(139, 0, 0, highTier ? 140 : 200) };
+            RadialGradientPaint bloodPaint = new RadialGradientPaint(new Point2D.Float(screenW/2f, screenH/2f), radius, fr, cl);
+            
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, pulse));
+            g2d.setPaint(bloodPaint);
+            g2d.fillRect(0, 0, screenW, screenH);
+            g2d.setPaint(null);
+            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+        }
+
+        // 5. Wave banners
         synchronized (waveBanners) {
             for (WaveBanner b : waveBanners) {
                 float life = (float) (b.expireTime - currentTime) / 2500f;
-                float alpha = Math.min(1f, life * 3f); // fade in fast, fade out slow
-                if (alpha <= 0)
-                    continue;
+                float alpha = Math.min(1f, life * 3f);
+                if (alpha <= 0) continue;
                 g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
-
-                g2d.setFont(FontManager.getFont(52f));
+                g2d.setFont(FontManager.getFont(b.text.length() > 20 ? 32f : 52f));
                 int tw = g2d.getFontMetrics().stringWidth(b.text);
                 int bx = screenW / 2 - tw / 2;
                 int by = screenH / 3;
-
-                // Shadow
                 g2d.setColor(new Color(0, 0, 0, 180));
                 g2d.fillRoundRect(bx - 30, by - 55, tw + 60, 75, 16, 16);
-
                 g2d.setColor(Color.BLACK);
                 g2d.drawString(b.text, bx + 3, by + 3);
                 g2d.setColor(b.color);

@@ -27,15 +27,17 @@ public class Rock extends Obstacle {
 
     @Override
     public void render(Graphics2D g) {
+        int dx = x;
+        int dy = y;
+
         java.awt.image.BufferedImage img = gameproject.ImageManager.get("rock");
         if (img != null) {
-            // Vẽ đá to hơn (lệch ra ngoài 8px mỗi chiều)
-            g.drawImage(img, x - 8, y - 8, width + 16, height + 16, null);
+            g.drawImage(img, dx - 8, dy - 8, width + 16, height + 16, null);
         } else {
-            g.setColor(new Color(128, 128, 128)); // Màu xám đá
-            g.fillRoundRect(x + 5, y + 5, width - 10, height - 10, 15, 15);
+            g.setColor(new Color(128, 128, 128));
+            g.fillRoundRect(dx + 5, dy + 5, width - 10, height - 10, 15, 15);
             g.setColor(Color.DARK_GRAY);
-            g.drawRoundRect(x + 5, y + 5, width - 10, height - 10, 15, 15);
+            g.drawRoundRect(dx + 5, dy + 5, width - 10, height - 10, 15, 15);
         }
 
         if (gameproject.GamePanel.showHitboxes && hitbox != null) {

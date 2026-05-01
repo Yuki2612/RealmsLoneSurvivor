@@ -25,6 +25,7 @@ import gameproject.environment.MapManager;
 import gameproject.environment.Building;
 
 public class GamePanel extends JPanel implements Runnable {
+    public static GamePanel instance;
     private Thread gameThread;
     private final int FPS = 60;
     public static boolean showHitboxes = false;
@@ -53,12 +54,41 @@ public class GamePanel extends JPanel implements Runnable {
     public String currentBgKey = "background1";
     public int totalBackgrounds = 0;
 
+    public int activeBossCount = 0;
+    public int camIntX, camIntY;
+
     public MapManager mapManager;
     public List<Building> buildings;
 
     private State currentState;
+    public int currentFPS = 0;
+    
+    // --- Hệ thống Thời gian Game (Managed Game Clock) ---
+    private static long totalPausedTime = 0;
+    private static long pauseStartTime = 0;
+    private static boolean isPaused = false;
+
+    public static long getTickTime() {
+        if (isPaused) return pauseStartTime - totalPausedTime;
+        return System.currentTimeMillis() - totalPausedTime;
+    }
+
+    public static void pauseGame() {
+        if (!isPaused) {
+            isPaused = true;
+            pauseStartTime = System.currentTimeMillis();
+        }
+    }
+
+    public static void resumeGame() {
+        if (isPaused) {
+            totalPausedTime += (System.currentTimeMillis() - pauseStartTime);
+            isPaused = false;
+        }
+    }
 
     public GamePanel() {
+        instance = this;
         setPreferredSize(new Dimension(screenWidth, screenHeight));
         setFocusable(true);
 
@@ -71,6 +101,7 @@ public class GamePanel extends JPanel implements Runnable {
         entityManager = new EntityManager();
         vfxManager = new VFXManager();
         activeSkills = new ArrayList<>();
+        buildings = new ArrayList<>();
         currentWeapon = new Pistol();
 
         // --- Ưu tiên nạp và phát nhạc Menu ngay lập tức để tránh delay ---
@@ -85,6 +116,11 @@ public class GamePanel extends JPanel implements Runnable {
         SoundManager.load("laser", "app/res/laser.wav");
         SoundManager.load("shield", "app/res/shield.wav");
         SoundManager.load("pickup", "app/res/pickup.wav");
+        
+        // Load player hurt sounds (giả định có 3 file)
+        for (int i = 1; i <= 3; i++) {
+            SoundManager.load("playerhurt" + i, "app/res/player" + i + "hurt.wav");
+        }
 
         SoundManager.loadMusic("gamebgm1", "app/res/gamebgm1.wav");
         SoundManager.loadMusic("gamebgm2", "app/res/gamebgm2.wav");
@@ -131,6 +167,8 @@ public class GamePanel extends JPanel implements Runnable {
         ImageManager.load("woodencrate", "app/res/woodencrate.png");
         ImageManager.load("roof", "app/res/roof.png");
         ImageManager.load("floor", "app/res/floor.png");
+        ImageManager.load("treasure", "app/res/treasure.png");
+        ImageManager.load("mimic", "app/res/mimic.png");
 
         PlayerData.load();
 
@@ -144,6 +182,15 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public void changeState(State state) {
+        // Quản lý dừng/tiếp tục thời gian game dựa trên State
+        if (state instanceof gameproject.state.PlayingState) {
+            resumeGame();
+        } else if (state instanceof gameproject.state.LevelUpState || 
+                   state instanceof gameproject.state.WeaponSelectState ||
+                   state instanceof gameproject.state.PauseState) {
+            pauseGame();
+        }
+        
         this.currentState = state;
         updateMusic();
     }
@@ -172,11 +219,14 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public void startNewGame() {
+        gameproject.state.PlayingState.resetEvents();
         CharacterClass charClass = PlayerData.selectedClass;
         
         // Tạo mới bản đồ cho mỗi lượt chơi để tăng tính ngẫu nhiên (Roguelike experience)
-        buildings = new java.util.ArrayList<>();
-        mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings);
+        synchronized (buildings) {
+            buildings.clear();
+            mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings);
+        }
         
         player = new Player(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, charClass);
         score = 0;
@@ -184,7 +234,7 @@ public class GamePanel extends JPanel implements Runnable {
         currentWeapon = new Pistol();
         vfxManager.clearAll();
 
-        long currentTime = System.currentTimeMillis();
+        long currentTime = getTickTime();
         startTime = currentTime;
         // Adjust survive time based on wave (approx 15s per wave) for scaling
         surviveTimeSeconds = (PlayerData.debugStartWave - 1) * 15;
@@ -224,6 +274,14 @@ public class GamePanel extends JPanel implements Runnable {
         changeState(new gameproject.state.LevelUpState());
     }
 
+    public void triggerNormalUpgrade() {
+        upgradeManager.generateNormalOptions(player);
+        player.resetMovement();
+        input.isMouseHolding = false;
+        gameproject.SoundManager.play("levelup");
+        changeState(new gameproject.state.LevelUpState());
+    }
+
     public void addScoreAndExp(int amount) {
         score += amount;
         upgradeManager.addExp(amount);
@@ -233,6 +291,9 @@ public class GamePanel extends JPanel implements Runnable {
     public void run() {
         double timePerFrame = 1000000000.0 / FPS;
         long lastFrame = System.nanoTime();
+        long lastFPSCheck = System.currentTimeMillis();
+        int frameCount = 0;
+
         while (true) {
             if (System.nanoTime() - lastFrame >= timePerFrame) {
                 SoundManager.updateLoopFading();
@@ -244,6 +305,13 @@ public class GamePanel extends JPanel implements Runnable {
 
                 repaint();
                 lastFrame = System.nanoTime();
+                frameCount++;
+
+                if (System.currentTimeMillis() - lastFPSCheck >= 1000) {
+                    currentFPS = frameCount;
+                    frameCount = 0;
+                    lastFPSCheck = System.currentTimeMillis();
+                }
             }
         }
     }

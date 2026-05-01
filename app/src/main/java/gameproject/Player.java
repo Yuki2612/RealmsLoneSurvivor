@@ -118,7 +118,7 @@ public class Player implements Renderable {
         String nextDir = animDir;
 
         if (isDashing) {
-            if (System.currentTimeMillis() - dashStartTime >= DASH_DURATION) {
+            if (gameproject.GamePanel.getTickTime() - dashStartTime >= DASH_DURATION) {
                 isDashing = false;
             } else {
                 float nextX = x + dashDirX * DASH_SPEED;
@@ -191,12 +191,12 @@ public class Player implements Renderable {
     }
 
     public void draw(Graphics g) {
-        if (isInvulnerable() && System.currentTimeMillis() % 200 < 100)
+        if (isInvulnerable() && gameproject.GamePanel.getTickTime() % 200 < 100)
             return;
         BufferedImage img = (activeAnim != null) ? activeAnim.getCurrentFrame() : null;
         if (img != null) {
-            int drawX = (int) x - 10;
-            int drawY = (int) y - 20;
+            int drawX = (int) Math.round(x) - 10;
+            int drawY = (int) Math.round(y) - 20;
             int drawSize = SIZE + 20;
             Graphics2D g2d = (Graphics2D) g.create();
             if (isDashing) {
@@ -210,12 +210,12 @@ public class Player implements Renderable {
             g2d.dispose();
         } else {
             g.setColor(isDashing ? Color.CYAN : Color.RED);
-            g.fillRect((int) x, (int) y, SIZE, SIZE);
+            g.fillRect((int) Math.round(x), (int) Math.round(y), SIZE, SIZE);
         }
         if (GamePanel.showHitboxes) {
             g.setColor(Color.GREEN);
             Rectangle b = getBounds();
-            g.drawRect(b.x, b.y, b.width, b.height);
+            g.drawRect((int) Math.round(b.x), (int) Math.round(b.y), b.width, b.height);
         }
     }
 
@@ -226,9 +226,9 @@ public class Player implements Renderable {
             case KeyEvent.VK_A -> left = true;
             case KeyEvent.VK_D -> right = true;
             case KeyEvent.VK_SHIFT -> {
-                if (!isDashing && System.currentTimeMillis() - lastDashTime >= dashCooldown) {
+                if (!isDashing && gameproject.GamePanel.getTickTime() - lastDashTime >= dashCooldown) {
                     isDashing = true;
-                    dashStartTime = System.currentTimeMillis();
+                    dashStartTime = gameproject.GamePanel.getTickTime();
                     lastDashTime = dashStartTime;
                     float length = (float) Math.sqrt(lastDirX * lastDirX + lastDirY * lastDirY);
                     if (length == 0) {
@@ -285,7 +285,12 @@ public class Player implements Renderable {
         if (isInvulnerable())
             return false;
         hearts--;
-        invulnerableUntil = System.currentTimeMillis() + 1000;
+        
+        // Phát âm thanh bị thương ngẫu nhiên (1-3)
+        int randHurt = 1 + (int)(Math.random() * 3);
+        SoundManager.play("playerhurt" + randHurt);
+
+        invulnerableUntil = gameproject.GamePanel.getTickTime() + 1000;
         return hearts <= 0;
     }
 
@@ -317,11 +322,11 @@ public class Player implements Renderable {
     }
 
     public boolean isInvulnerable() {
-        return System.currentTimeMillis() < invulnerableUntil;
+        return gameproject.GamePanel.getTickTime() < invulnerableUntil;
     }
 
     public void addInvulnerability(long duration) {
-        long now = System.currentTimeMillis();
+        long now = gameproject.GamePanel.getTickTime();
         if (invulnerableUntil < now)
             invulnerableUntil = now;
         invulnerableUntil += duration;

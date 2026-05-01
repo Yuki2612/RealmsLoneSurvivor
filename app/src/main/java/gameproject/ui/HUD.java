@@ -10,6 +10,10 @@ import gameproject.Player;
 import gameproject.entity.Enemy;
 import gameproject.meta.PlayerData;
 import gameproject.environment.*;
+import java.awt.RadialGradientPaint;
+import java.awt.geom.Point2D;
+import java.awt.BasicStroke;
+import java.awt.AlphaComposite;
 
 public class HUD {
     public static void draw(Graphics g, gameproject.GamePanel game, Player player, ArrayList<Enemy> enemies) {
@@ -18,7 +22,9 @@ public class HUD {
         int score = game.score;
         int waveCount = game.entityManager.waveCount;
         int playerDamage = game.upgradeManager.playerDamage;
-        long fireRate = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus());
+        long actualCooldown = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus());
+        float shotsPerSec = 1000.0f / actualCooldown;
+        int dps = (int) (playerDamage * game.currentWeapon.damageMultiplier * game.currentWeapon.getProjectilesPerShot() * shotsPerSec);
         int currentExp = game.upgradeManager.currentExp;
         int expToNextLevel = game.upgradeManager.expToNextLevel;
         int playerLevel = game.upgradeManager.playerLevel;
@@ -31,7 +37,6 @@ public class HUD {
         int goldX = 30;
         int goldY = screenHeight - 95;
         int soulX = 180;
-        int soulY = screenHeight - 95;
         int atkX = screenWidth - 350;
 
         java.awt.image.BufferedImage goldImg = ImageManager.get("gold");
@@ -41,14 +46,14 @@ public class HUD {
         g.setColor(Color.BLACK);
         g.drawString("Score: " + score, scoreX, 35);
         g.drawString("Wave: " + waveCount, waveX, 35);
-        
+
         if (goldImg != null) {
             g.drawImage(goldImg, goldX, goldY - 20, 24, 24, null);
             g.drawString("" + PlayerData.gold, goldX + 30, goldY);
         } else {
             g.drawString("G: " + PlayerData.gold, goldX, goldY);
         }
-        
+
         if (soulImg != null) {
             g.drawImage(soulImg, soulX, goldY - 20, 24, 24, null);
             g.drawString("" + PlayerData.soulStones, soulX + 30, goldY);
@@ -56,8 +61,10 @@ public class HUD {
             g.drawString("S: " + PlayerData.soulStones, soulX, goldY);
         }
 
-        g.drawString("ATK: " + playerDamage, atkX, 35);
-        g.drawString("Fire Rate: " + fireRate + "ms", atkX, 70);
+        // Hiển thị FPS ở vị trí ATK cũ (Góc trên bên phải)
+        g.setFont(FontManager.getFont(20f));
+        g.drawString("FPS: " + game.currentFPS, atkX, 35);
+        
         g.drawString("HP:", 15, 112);
         g.drawString("Dash:", 15, 155);
 
@@ -65,7 +72,7 @@ public class HUD {
         g.setColor(Color.WHITE);
         g.drawString("Score: " + score, scoreX - 2, 33);
         g.drawString("Wave: " + waveCount, waveX - 2, 33);
-        
+
         if (goldImg != null) {
             g.drawImage(goldImg, goldX, goldY - 20, 24, 24, null);
             g.setColor(Color.YELLOW);
@@ -74,7 +81,7 @@ public class HUD {
             g.setColor(Color.YELLOW);
             g.drawString("G: " + PlayerData.gold, goldX - 2, goldY - 2);
         }
-        
+
         if (soulImg != null) {
             g.drawImage(soulImg, soulX, goldY - 20, 24, 24, null);
             g.setColor(Color.CYAN);
@@ -85,8 +92,7 @@ public class HUD {
         }
 
         g.setColor(Color.WHITE);
-        g.drawString("ATK: " + playerDamage, atkX - 2, 33);
-        g.drawString("Fire Rate: " + fireRate + "ms", atkX - 2, 68);
+        g.drawString("FPS: " + game.currentFPS, atkX - 2, 33);
         g.drawString("HP:", 13, 110);
         g.drawString("Dash:", 13, 153);
 
@@ -104,7 +110,7 @@ public class HUD {
         }
 
         // Trạng thái Dash
-        long timeSinceLastDash = System.currentTimeMillis() - player.getLastDashTime();
+        long timeSinceLastDash = gameproject.GamePanel.getTickTime() - player.getLastDashTime();
         if (timeSinceLastDash >= player.getDashCooldown()) {
             g.setColor(Color.BLACK);
             g.drawString("READY", 102, 155);
@@ -178,28 +184,28 @@ public class HUD {
             int comboCount = cm.getComboCount();
             float timerRatio = cm.getTimerRatio();
             java.awt.Color comboColor = cm.getComboColor();
-            
+
             int centerX = screenWidth / 2;
             int comboY = 150; // Đẩy xuống thấp hơn để tránh đè Boss HP Bar
-            
+
             // Rung lắc mạnh hơn khi combo cao
             int shakeX = 0;
             if (cm.getTier() >= 2) {
-                shakeX = (int)(Math.random() * 6 - 3);
+                shakeX = (int) (Math.random() * 6 - 3);
             }
-            
+
             g.setFont(gameproject.FontManager.getFont(48f * cm.getPulseScale()));
             String comboText = comboCount + " COMBO";
             int tw = g.getFontMetrics().stringWidth(comboText);
-            
+
             // Draw shadow
             g.setColor(java.awt.Color.BLACK);
-            g.drawString(comboText, centerX - tw/2 + 3 + shakeX, comboY + 3);
-            
+            g.drawString(comboText, centerX - tw / 2 + 3 + shakeX, comboY + 3);
+
             // Draw main text
             g.setColor(comboColor);
-            g.drawString(comboText, centerX - tw/2 + shakeX, comboY);
-            
+            g.drawString(comboText, centerX - tw / 2 + shakeX, comboY);
+
             // Draw Tier Title
             String title = cm.getTierTitle();
             if (!title.isEmpty()) {
@@ -207,9 +213,9 @@ public class HUD {
                 g.setFont(gameproject.FontManager.getFont(40f * titleScale));
                 int ttw = g.getFontMetrics().stringWidth(title);
                 g.setColor(java.awt.Color.BLACK);
-                g.drawString(title, centerX - ttw/2 + 2, comboY - 60 + 2);
+                g.drawString(title, centerX - ttw / 2 + 2, comboY - 60 + 2);
                 g.setColor(comboColor);
-                g.drawString(title, centerX - ttw/2, comboY - 60);
+                g.drawString(title, centerX - ttw / 2, comboY - 60);
             }
 
             // Draw timer bar
@@ -217,24 +223,25 @@ public class HUD {
             int barH = 8;
             int comboBarX = centerX - barW / 2;
             int comboBarY = comboY + 15;
-            
+
             g.setColor(new java.awt.Color(0, 0, 0, 150));
             g.fillRect(comboBarX, comboBarY, barW, barH);
             g.setColor(comboColor);
-            g.fillRect(comboBarX, comboBarY, (int)(barW * timerRatio), barH);
-            
+            g.fillRect(comboBarX, comboBarY, (int) (barW * timerRatio), barH);
+
             // Draw Buff text
             float atkBonus = cm.getFireRateBonus() * 100;
             float spdBonus = cm.getMoveSpeedBonus() * 100;
             if (atkBonus > 0) {
                 g.setFont(gameproject.FontManager.getFont(14f));
-                String buffText = "+" + (int)atkBonus + "% FIRE RATE";
-                if (spdBonus > 0) buffText += " | +" + (int)spdBonus + "% SPEED";
-                
+                String buffText = "+" + (int) atkBonus + "% FIRE RATE";
+                if (spdBonus > 0)
+                    buffText += " | +" + (int) spdBonus + "% SPEED";
+
                 g.setColor(java.awt.Color.BLACK);
-                g.drawString(buffText, centerX - g.getFontMetrics().stringWidth(buffText)/2 + 1, comboBarY + 25);
+                g.drawString(buffText, centerX - g.getFontMetrics().stringWidth(buffText) / 2 + 1, comboBarY + 25);
                 g.setColor(java.awt.Color.GREEN);
-                g.drawString(buffText, centerX - g.getFontMetrics().stringWidth(buffText)/2, comboBarY + 24);
+                g.drawString(buffText, centerX - g.getFontMetrics().stringWidth(buffText) / 2, comboBarY + 24);
             }
         }
 
@@ -291,14 +298,34 @@ public class HUD {
         }
 
         // 3. Vẽ QUÁI (chấm đỏ) - ĐỒNG BỘ HÓA
-        g.setColor(Color.RED);
         synchronized (enemies) {
             for (Enemy e : enemies) {
                 if (e.isDead())
                     continue;
                 int ex = mapX + (int) (e.getX() * scaleX);
                 int ey = mapY + (int) (e.getY() * scaleY);
-                int dotSize = e.isBoss ? (isLarge ? 8 : 4) : (isLarge ? 4 : 2);
+                
+                // Mimic đặc biệt (màu tím sáng)
+                if (e instanceof gameproject.entity.Mimic) {
+                    g.setColor(Color.MAGENTA);
+                    int dotSize = isLarge ? 6 : 4;
+                    g.fillRect(ex, ey, dotSize, dotSize);
+                } else {
+                    g.setColor(Color.RED);
+                    int dotSize = e.isBoss ? (isLarge ? 8 : 4) : (isLarge ? 4 : 2);
+                    g.fillRect(ex, ey, dotSize, dotSize);
+                }
+            }
+        }
+
+        // 3.5 Vẽ RƯƠNG SỰ KIỆN (chấm cam)
+        synchronized (game.entityManager.eventChests) {
+            g.setColor(Color.ORANGE);
+            for (gameproject.entity.EventTreasure et : game.entityManager.eventChests) {
+                if (et.opened) continue;
+                int ex = mapX + (int) (et.x * scaleX);
+                int ey = mapY + (int) (et.y * scaleY);
+                int dotSize = isLarge ? 5 : 3;
                 g.fillRect(ex, ey, dotSize, dotSize);
             }
         }
@@ -308,8 +335,27 @@ public class HUD {
         int px = mapX + (int) (player.getX() * scaleX);
         int py = mapY + (int) (player.getY() * scaleY);
         int pSize = isLarge ? 6 : 3;
-        g.fillRect(px - pSize/2, py - pSize/2, pSize, pSize);
-        
+        g.fillRect(px - pSize / 2, py - pSize / 2, pSize, pSize);
+
+        // 5. Darkness on Minimap
+        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS && 
+            gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+            
+            int miniVisionRadius = isLarge ? 90 : 30;
+            float[] fractions = {0.0f, 0.7f, 1.0f};
+            Color[] colors = {new Color(0,0,0,0), new Color(0,0,0,180), Color.BLACK};
+            
+            RadialGradientPaint rgp = new RadialGradientPaint(new java.awt.geom.Point2D.Float(px, py), miniVisionRadius, fractions, colors);
+            g2d.setPaint(rgp);
+            
+            // Lưu lại clip cũ
+            java.awt.Shape oldClip = g2d.getClip();
+            g2d.clipRect(mapX, mapY, mapSize, mapSize);
+            g2d.fillRect(mapX, mapY, mapSize, mapSize);
+            g2d.setClip(oldClip);
+            g2d.setPaint(null);
+        }
+
         if (isLarge) {
             g.setFont(FontManager.getFont(20f));
             g.drawString("WORLD MAP (M to close)", mapX, mapY - 10);
