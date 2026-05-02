@@ -17,39 +17,57 @@ public class ImageManager {
             BufferedImage img = ImageIO.read(new File(path));
             images.put(name, img);
         } catch (IOException e) {
-            // System.err.println("LỖI CHÍ MẠNG: Không tìm thấy ảnh tại đường dẫn -> " + path);
+            // System.err.println("LỖI CHÍ MẠNG: Không tìm thấy ảnh tại đường dẫn -> " +
+            // path);
         }
     }
 
-    public static void loadAnimation(String key, String path, int frames) {
-        if (animations.containsKey(key)) return;
-        File file = new File(path);
-        
-        if (!file.exists() && path.endsWith(".png")) {
-            File altFile = new File(path + ".png");
-            if (altFile.exists()) file = altFile;
-        }
-
-        if (!file.exists()) {
-            // if (key.startsWith("player1")) {
-            //     System.err.println("THIẾU ANIMATION: " + path);
-            // }
+    /**
+     * Nạp animation và TỰ ĐỘNG đọc số khung hình từ tên file (Ví dụ: player2_run_f15.png)
+     */
+    public static void loadAnimation(String key, String path, int defaultFrames) {
+        if (animations.containsKey(key))
             return;
-        }
+        File file = new File(path);
+
+        if (!file.exists()) return;
+
         try {
             BufferedImage sheet = ImageIO.read(file);
-            int framesCount = frames;
-            int w = sheet.getWidth() / framesCount;
+            int w = sheet.getWidth();
             int h = sheet.getHeight();
-            
+
+            // LOGIC THÔNG MINH: Tìm số frame trong tên file
+            int framesCount = defaultFrames;
+            String fileName = file.getName();
+            if (fileName.contains("_f")) {
+                try {
+                    String suffix = fileName.substring(fileName.lastIndexOf("_f") + 2);
+                    if (suffix.contains(".")) suffix = suffix.substring(0, suffix.lastIndexOf("."));
+                    framesCount = Integer.parseInt(suffix);
+                } catch (Exception e) {
+                    framesCount = defaultFrames;
+                }
+            }
+
+            if (framesCount <= 0) framesCount = 1;
+            int frameW = w / framesCount;
+
             BufferedImage[] anim = new BufferedImage[framesCount];
             for (int i = 0; i < framesCount; i++) {
-                anim[i] = sheet.getSubimage(i * w, 0, w, h);
+                anim[i] = sheet.getSubimage(i * frameW, 0, frameW, h);
             }
             animations.put(key, anim);
         } catch (IOException e) {
-            // System.err.println("LỖI ĐỌC FILE ANIMATION: " + path);
+            // Error handling
         }
+    }
+
+    /**
+     * Hàm overload để dùng số mặc định là 10 nếu không có thông tin
+     */
+    public static void loadAnimation(String key, String path) {
+        loadAnimation(key, path, 10);
     }
 
     public static BufferedImage get(String name) {

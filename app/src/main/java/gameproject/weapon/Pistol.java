@@ -9,9 +9,9 @@ public class Pistol extends Weapon {
     }
 
     @Override
-    public void shoot(float startX, float startY, float targetX, float targetY, float bulletSpeedMulti,
+    public void shoot(float startX, float startY, float targetX, float targetY,
             int playerDamage, int bounces, ArrayList<Projectile> projectiles, long currentTime) {
-        Projectile p = new Projectile(startX, startY, targetX, targetY, bulletSpeedMulti, range);
+        Projectile p = new Projectile(startX, startY, targetX, targetY, 1.0f, range);
         p.damage = Math.max(1, (int) (playerDamage * this.damageMultiplier));
         p.bouncesLeft = bounces;
         projectiles.add(p);

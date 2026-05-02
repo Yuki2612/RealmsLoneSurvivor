@@ -85,25 +85,6 @@ public abstract class Enemy implements gameproject.Renderable {
 
     public abstract void draw(Graphics g);
 
-    /**
-     * AI Phá vật cản kiểu Clash of Clans: Nếu bị chặn bởi vật cản phá hủy được, hãy
-     * tấn công nó
-     */
-    protected void handleObstacleBreaking(float moveX, float moveY, GamePanel panel) {
-        if (moveX == 0 && moveY == 0)
-            return;
-
-        // Kiểm tra một điểm phía trước hướng di chuyển
-        int checkX = (int) (x + size / 2 + (moveX != 0 ? (moveX / Math.abs(moveX)) * (size / 2 + 5) : 0));
-        int checkY = (int) (y + size / 2 + (moveY != 0 ? (moveY / Math.abs(moveY)) * (size / 2 + 5) : 0));
-
-        if (panel.mapManager.isSolid(checkX, checkY)) {
-            // Tấn công vật cản (Sát thương 1 mỗi frame, cây có 200 HP sẽ bị phá sau khoảng
-            // 3 giây bầy đàn tấn công)
-            panel.mapManager.damageObstacleAt(checkX, checkY, 1);
-        }
-    }
-
     public void updateStatusEffects(long currentTime, VFXManager vfxManager) {
         if (burnEndTime > currentTime && currentTime - lastBurnTick >= 500) {
             // Burn DoT: 33% playerDamage/tick
@@ -195,8 +176,14 @@ public abstract class Enemy implements gameproject.Renderable {
     }
 
     public void takeDamage(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
+        // 1. Áp dụng hệ số Chí mạng (x1.5)
+        if (isCrit) {
+            damage = (int) (damage * 1.5f);
+        }
+
+        // 2. Áp dụng hệ số Độc (x1.3) - Có thể cộng dồn với Chí mạng
         if (poisonEndTime > currentTime) {
-            damage = (int) (damage * 1.3f); // Damage stack: Crit * Poison Multi
+            damage = (int) (damage * 1.3f); // Stack: (Base * 1.5) * 1.3
         }
 
         if (isCrit) {
@@ -207,7 +194,14 @@ public abstract class Enemy implements gameproject.Renderable {
             }
             takeDamageBase(damage, null, currentTime, critColor);
         } else {
-            takeDamageBase(damage, vfxManager, currentTime, poisonEndTime > currentTime ? Color.GREEN : Color.WHITE);
+            // Priority: Burn (Orange) > Poison (Green) > Normal (White)
+            Color textColor = Color.WHITE;
+            if (burnEndTime > currentTime)
+                textColor = new Color(255, 100, 0); // Orange-Red for Fire
+            else if (poisonEndTime > currentTime)
+                textColor = Color.GREEN;
+
+            takeDamageBase(damage, vfxManager, currentTime, textColor);
         }
     }
 
@@ -284,13 +278,13 @@ public abstract class Enemy implements gameproject.Renderable {
 
             // 1. Hiệu ứng Blood Moon Aura (Vòng tròn đỏ dưới chân)
             if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
-                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE && !isBoss) {
-                g2d.setColor(new Color(255, 0, 0, (int)(70 * alpha)));
-                g2d.fillOval((int)x - 5, (int)y + size - 10, size + 10, 15);
+                    gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE
+                    && !isBoss) {
+                g2d.setColor(new Color(255, 0, 0, (int) (70 * alpha)));
+                g2d.fillOval((int) x - 5, (int) y + size - 10, size + 10, 15);
             }
 
             g2d.drawImage(img, drawX, drawY, drawW, drawH, null);
-
 
             // Hit flash: vẽ lớp trắng bán trong suốt lên trên sprite
             if (now < hitFlashEndTime) {

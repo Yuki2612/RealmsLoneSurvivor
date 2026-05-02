@@ -10,13 +10,13 @@ public class Railgun extends Weapon {
 
     @Override
     public void shoot(float startX, float startY, float targetX, float targetY,
-            float bulletSpeedMulti, int playerDamage, int bounces,
+            int playerDamage, int bounces,
             ArrayList<Projectile> projectiles, long currentTime) {
 
         lastShootTime = currentTime;
         SoundManager.play("laser");
 
-        Projectile p = new Projectile(startX, startY, targetX, targetY, bulletSpeedMulti * 3, range);
+        Projectile p = new Projectile(startX, startY, targetX, targetY, 3.0f, range);
         p.damage = (int) (playerDamage * damageMultiplier);
         p.isRailgun = true;
         p.bouncesLeft = 1;

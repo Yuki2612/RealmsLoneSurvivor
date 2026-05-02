@@ -9,12 +9,12 @@ public class SMG extends Weapon {
     }
 
     @Override
-    public void shoot(float startX, float startY, float targetX, float targetY, float bulletSpeedMulti,
+    public void shoot(float startX, float startY, float targetX, float targetY,
             int playerDamage, int bounces, ArrayList<Projectile> projectiles, long currentTime) {
         float spreadX = (float) (Math.random() * 40 - 20);
         float spreadY = (float) (Math.random() * 40 - 20);
 
-        Projectile p = new Projectile(startX, startY, targetX + spreadX, targetY + spreadY, bulletSpeedMulti * 1.2f,
+        Projectile p = new Projectile(startX, startY, targetX + spreadX, targetY + spreadY, 1.2f,
                 range);
         p.damage = Math.max(1, (int) (playerDamage * this.damageMultiplier));
         p.bouncesLeft = bounces;

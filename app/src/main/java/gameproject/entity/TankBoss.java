@@ -73,18 +73,6 @@ public class TankBoss extends Enemy {
 
     @Override
     public void draw(Graphics g) {
-        java.awt.image.BufferedImage img = ImageManager.get("boss3");
-        if (img != null) {
-            g.drawImage(img, (int) x - 20, (int) y - 40, size + 40, size + 40, null);
-        } else {
-            g.setColor(Color.DARK_GRAY);
-            g.fillRect((int) x, (int) y, size, size);
-        }
-
-        g.setColor(Color.RED);
-        g.fillRect((int) x, (int) y + size, size, 6);
-        g.setColor(Color.GREEN);
-        int hpWidth = (int) ((float) hp / maxHp * size);
-        g.fillRect((int) x, (int) y + size, hpWidth, 6);
+        drawSprite(g, "boss3");
     }
 }

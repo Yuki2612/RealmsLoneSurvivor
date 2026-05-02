@@ -81,11 +81,11 @@ public class SkillsUI {
         // --- Grid Layout ---
         int columns = 3;
         int cardW = 280;
-        int cardH = 200;
-        int gap = 30;
+        int cardH = 220;
+        int gap = 25;
         int totalGridW = columns * cardW + (columns - 1) * gap;
         int startX = sw / 2 - totalGridW / 2;
-        int startY = 140;
+        int startY = 130;
 
         for (int i = 0; i < skills.size(); i++) {
             int row = i / columns;
@@ -133,36 +133,36 @@ public class SkillsUI {
         g2d.drawRoundRect(x, y, w, h, 20, 20);
 
         // Icon Area
-        int iconSize = 50;
+        int iconSize = 55;
         int ix = x + 20;
         int iy = y + 20;
         drawSkillIcon(g2d, u, ix, iy, iconSize);
 
-        // Title
+        // Title & Level Info (Positioned to the right of the icon)
         g2d.setColor(Color.WHITE);
-        g2d.setFont(FontManager.getFont(20f));
+        g2d.setFont(FontManager.getFont(18f));
         String name = u.name().replace("_", " ");
-        g2d.drawString(name, ix + iconSize + 15, iy + 35);
+        g2d.drawString(name, ix + iconSize + 15, iy + 25);
 
         if (isUnlocked) {
-            // Level Progress Bar
+            g2d.setFont(FontManager.getFont(14f));
+            g2d.setColor(new Color(180, 180, 200));
+            g2d.drawString("Level: " + lv + "/" + maxLv, ix + iconSize + 15, iy + 45);
+
+            // Level Progress Bar (Moved down to avoid overlap)
             int barX = x + 20;
-            int barY = y + 90;
+            int barY = y + 95;
             int barW = w - 40;
-            int barH = 12;
+            int barH = 10;
             g2d.setColor(Color.BLACK);
             g2d.fillRoundRect(barX, barY, barW, barH, 5, 5);
             g2d.setColor(Color.CYAN);
             int fillW = (int)((float)lv / maxLv * barW);
             g2d.fillRoundRect(barX, barY, fillW, barH, 5, 5);
-            
-            g2d.setFont(FontManager.getFont(14f));
-            g2d.setColor(new Color(200, 200, 200));
-            g2d.drawString("Efficiency Level: " + lv + "/" + maxLv, barX, barY - 10);
         } else {
             g2d.setFont(FontManager.getFont(16f));
             g2d.setColor(new Color(255, 100, 100));
-            g2d.drawString("LOCKED", x + 20, y + 105);
+            g2d.drawString("LOCKED", ix + iconSize + 15, iy + 45);
         }
 
         // Upgrade Button
@@ -203,8 +203,19 @@ public class SkillsUI {
     }
 
     private static void drawSkillIcon(Graphics2D g2d, Upgrade u, int x, int y, int s) {
+        // Attempt to load from ImageManager
+        String iconKey = "skill_" + u.name().toLowerCase();
+        java.awt.image.BufferedImage icon = gameproject.ImageManager.get(iconKey);
+        
+        if (icon != null) {
+            // Draw the actual icon directly (it already has its own frame)
+            g2d.drawImage(icon, x, y, s, s, null);
+            return;
+        }
+
+        // Fallback procedural icon (Square)
         g2d.setColor(new Color(20, 20, 30));
-        g2d.fillOval(x, y, s, s);
+        g2d.fillRect(x, y, s, s);
         
         Color skillColor = Color.WHITE;
         switch(u) {
@@ -221,9 +232,8 @@ public class SkillsUI {
         
         g2d.setColor(skillColor);
         g2d.setStroke(new BasicStroke(3));
-        g2d.drawOval(x + 5, y + 5, s - 10, s - 10);
+        g2d.drawRect(x + 5, y + 5, s - 10, s - 10);
         
-        // Simple procedural icon
-        g2d.fillOval(x + s/2 - 5, y + s/2 - 5, 10, 10);
+        g2d.fillRect(x + s/2 - 5, y + s/2 - 5, 10, 10);
     }
 }

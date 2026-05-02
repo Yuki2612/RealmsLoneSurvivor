@@ -35,8 +35,7 @@ public class CircleHitbox implements Hitbox {
     @Override
     public void draw(Graphics g) {
         int r = (int) radius;
-        g.drawOval((int) Math.round(centerX) - gameproject.GamePanel.instance.camIntX - r,
-                (int) Math.round(centerY) - gameproject.GamePanel.instance.camIntY - r, r * 2, r * 2);
+        g.drawOval((int) Math.round(centerX) - r, (int) Math.round(centerY) - r, r * 2, r * 2);
     }
 
     @Override

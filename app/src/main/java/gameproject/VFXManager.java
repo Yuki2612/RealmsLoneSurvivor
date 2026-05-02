@@ -127,27 +127,37 @@ public class VFXManager {
     }
 
     public void addExplosion(float x, float y, float radius, long currentTime) {
-        fireZones.add(new FireZone(x - radius / 2, y - radius / 2, currentTime + 200, true, false, (int) radius));
+        synchronized (fireZones) {
+            fireZones.add(new FireZone(x - radius / 2, y - radius / 2, currentTime + 200, true, false, (int) radius));
+        }
         spawnParticleBurst(x, y, 12, currentTime, new Color(255, 100, 0), new Color(255, 220, 50), 5, 8, 500);
     }
 
     public void addFireTrail(float x, float y, long currentTime) {
-        fireZones.add(new FireZone(x, y, currentTime + 3000, false, false, 20));
+        synchronized (fireZones) {
+            fireZones.add(new FireZone(x, y, currentTime + 3000, false, false, 20));
+        }
     }
 
     public void addAcidZone(float x, float y, float radius, long currentTime) {
-        fireZones.add(new FireZone(x - radius / 2, y - radius / 2, currentTime + 5000, false, true, (int) radius));
+        synchronized (fireZones) {
+            fireZones.add(new FireZone(x - radius / 2, y - radius / 2, currentTime + 5000, false, true, (int) radius));
+        }
     }
 
     public void addLaser(float x1, float y1, float x2, float y2, long currentTime) {
-        lasers.add(new LaserVFX(x1, y1, x2, y2, currentTime));
+        synchronized (lasers) {
+            lasers.add(new LaserVFX(x1, y1, x2, y2, currentTime));
+        }
     }
 
     public void addDamageText(float x, float y, int damage, long currentTime, Color color) {
         if (!showDamageText) return;
         float ox = (float) (Math.random() * 20 - 10);
         float oy = (float) (Math.random() * 10 - 5);
-        damageTexts.add(new DamageText(x + ox, y + oy, damage, currentTime, color, false));
+        synchronized (damageTexts) {
+            damageTexts.add(new DamageText(x + ox, y + oy, damage, currentTime, color, false));
+        }
     }
 
     public void addDamageText(float x, float y, int damage, long currentTime) {
@@ -158,7 +168,9 @@ public class VFXManager {
         if (!showDamageText) return;
         float ox = (float) (Math.random() * 20 - 10);
         float oy = (float) (Math.random() * 10 - 5);
-        damageTexts.add(new DamageText(x + ox, y + oy, damage, currentTime, color, true));
+        synchronized (damageTexts) {
+            damageTexts.add(new DamageText(x + ox, y + oy, damage, currentTime, color, true));
+        }
     }
 
     public void addCritDamageText(float x, float y, int damage, long currentTime) {
@@ -374,42 +386,58 @@ public class VFXManager {
         }
 
         // 4. Darkness
-        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS &&
-            gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
-            if (darknessVignette == null) initDarknessVignette(screenW, screenH);
-            int screenX = (int) Math.round(game.player.getX() + game.player.getBounds().width / 2f) - game.camIntX;
-            int screenY = (int) Math.round(game.player.getY() + game.player.getBounds().height / 2f) - game.camIntY;
-            g2d.drawImage(darknessVignette, screenX - darknessVignette.getWidth()/2, screenY - darknessVignette.getHeight()/2, null);
-        } else if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS &&
-                   gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.WARNING) {
-            g2d.setColor(new Color(0, 0, 0, 80));
-            g2d.fillRect(0, 0, screenW, screenH);
-        } else if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
-                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS) {
+            float fadeAlpha = 1.0f;
+            if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING) {
+                fadeAlpha = Math.max(0, (float)(gameproject.state.PlayingState.eventEndTime - currentTime) / 3000f);
+            }
             
-            boolean highTier = game.player.getComboManager().getTier() >= 3;
-            
-            // 1. Tông màu đỏ toàn màn hình (Giảm độ đậm nếu đang có Combo Tier 3 để tránh lóa)
-            g2d.setColor(new Color(180, 0, 0, highTier ? 12 : 25));
-            g2d.fillRect(0, 0, screenW, screenH);
-            
-            // 2. Viền đỏ pulsing (Blood Vignette) - Crimson Deep Red
-            float basePulse = (float) (Math.sin(currentTime / 200.0) * 0.12f + 0.3f);
-            float pulse = highTier ? basePulse * 0.6f : basePulse; // Giảm rung lắc nếu đang combo cao
-            
-            // Bán kính lớn hơn Combo Tier 3 một chút để tạo lớp phủ bên ngoài
-            float radius = (float) Math.sqrt(screenW * screenW + screenH * screenH) / 1.3f;
-            
-            float[] fr = { 0.0f, 0.65f, 1.0f };
-            // Dùng màu Crimson đậm để phân biệt với màu Cam của Combo
-            Color[] cl = { new Color(0,0,0,0), new Color(100, 0, 0, 0), new Color(139, 0, 0, highTier ? 140 : 200) };
-            RadialGradientPaint bloodPaint = new RadialGradientPaint(new Point2D.Float(screenW/2f, screenH/2f), radius, fr, cl);
-            
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, pulse));
-            g2d.setPaint(bloodPaint);
-            g2d.fillRect(0, 0, screenW, screenH);
-            g2d.setPaint(null);
-            g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+            if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE || 
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING) {
+                
+                if (darknessVignette == null) initDarknessVignette(screenW, screenH);
+                int screenX = (int) Math.round(game.player.getX() + game.player.getBounds().width / 2f) - game.camIntX;
+                int screenY = (int) Math.round(game.player.getY() + game.player.getBounds().height / 2f) - game.camIntY;
+                
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
+                g2d.drawImage(darknessVignette, screenX - darknessVignette.getWidth()/2, screenY - darknessVignette.getHeight()/2, null);
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+                
+            } else if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.WARNING) {
+                g2d.setColor(new Color(0, 0, 0, 80));
+                g2d.fillRect(0, 0, screenW, screenH);
+            }
+        } else if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON) {
+            float fadeAlpha = 1.0f;
+            if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING) {
+                fadeAlpha = Math.max(0, (float)(gameproject.state.PlayingState.eventEndTime - currentTime) / 3000f);
+            }
+
+            if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE || 
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING) {
+                
+                boolean highTier = game.player.getComboManager().getTier() >= 3;
+                
+                // 1. Tông màu đỏ toàn màn hình
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
+                g2d.setColor(new Color(180, 0, 0, highTier ? 12 : 25));
+                g2d.fillRect(0, 0, screenW, screenH);
+                
+                // 2. Viền đỏ pulsing (Blood Vignette)
+                float basePulse = (float) (Math.sin(currentTime / 200.0) * 0.12f + 0.3f);
+                float pulse = (highTier ? basePulse * 0.6f : basePulse) * fadeAlpha;
+                
+                float radius = (float) Math.sqrt(screenW * screenW + screenH * screenH) / 1.3f;
+                float[] fr = { 0.0f, 0.65f, 1.0f };
+                Color[] cl = { new Color(0,0,0,0), new Color(100, 0, 0, 0), new Color(139, 0, 0, highTier ? 140 : 200) };
+                RadialGradientPaint bloodPaint = new RadialGradientPaint(new Point2D.Float(screenW/2f, screenH/2f), radius, fr, cl);
+                
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, Math.min(1f, pulse)));
+                g2d.setPaint(bloodPaint);
+                g2d.fillRect(0, 0, screenW, screenH);
+                g2d.setPaint(null);
+                g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
+            }
         }
 
         // 5. Wave banners

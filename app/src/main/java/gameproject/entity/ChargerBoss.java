@@ -31,6 +31,15 @@ public class ChargerBoss extends Enemy {
             speed = 5.0f;
             chargeFrames--;
 
+            // SÁT THƯƠNG VẬT CẢN KHI ĐANG LƯỚT
+            // Kiểm tra một vùng nhỏ phía trước hướng di chuyển
+            float checkDist = size / 2f + 10;
+            float checkX = x + size / 2f + (velX > 0 ? checkDist : (velX < 0 ? -checkDist : 0));
+            float checkY = y + size / 2f + (velY > 0 ? checkDist : (velY < 0 ? -checkDist : 0));
+            
+            // Phá hủy vật thể có thể phá hủy (Trees, Crates)
+            panel.mapManager.damageObstacleAt((int)checkX, (int)checkY, 10); // Gây sát thương lớn để phá nhanh
+
             // Bắn đạn xung quanh khi đang lướt (mỗi 5 frame bắn 1 lần burst)
             if (chargeFrames % 5 == 0) {
                 for (int i = 0; i < 8; i++) {

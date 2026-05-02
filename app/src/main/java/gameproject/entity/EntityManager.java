@@ -70,10 +70,26 @@ public class EntityManager {
 
             if (waveCount % 5 == 0) {
                 int bType = (waveCount / 5) % 3;
-                if (bType == 0)
-                    bType = 3;
+                if (bType == 0) bType = 3;
+
+                // Tìm vị trí an toàn cho Boss (Né vật cản và nằm trong map)
                 float bossStartX = panel.cameraX + screenWidth / 2f;
-                float bossStartY = panel.cameraY - 100f; // Boss tới từ phía trên camera
+                float bossStartY = panel.cameraY - 100f;
+                
+                for (int attempt = 0; attempt < 15; attempt++) {
+                    float testX = panel.cameraX + (float)(Math.random() * screenWidth);
+                    float testY = panel.cameraY - 150f; // Boss tới từ phía trên
+                    if (Math.random() < 0.5) testY = panel.cameraY + screenHeight + 150f; // Hoặc từ phía dưới
+                    
+                    testX = Math.max(0, Math.min(testX, GamePanel.WORLD_WIDTH - 100));
+                    testY = Math.max(0, Math.min(testY, GamePanel.WORLD_HEIGHT - 100));
+
+                    if (panel.mapManager.isNavigable((int) testX + 50, (int) testY + 50)) {
+                        bossStartX = testX;
+                        bossStartY = testY;
+                        break;
+                    }
+                }
 
                 if (bType == 1)
                     enemies.add(new ChargerBoss(bossStartX, bossStartY, surviveTimeSeconds));
@@ -199,50 +215,54 @@ public class EntityManager {
 
                             vfxManager.addLaser(p.startX, p.startY, currentEndX, currentEndY, currentTime);
 
-                            for (Enemy e : enemies) {
-                                if (!e.isDead() && distanceToLineSegment(e.getX() + e.size / 2, e.getY() + e.size / 2,
-                                        p.startX, p.startY, currentEndX, currentEndY) <= 40) {
-                                    e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                            synchronized (enemies) {
+                                for (Enemy e : enemies) {
+                                    if (!e.isDead() && distanceToLineSegment(e.getX() + e.size / 2, e.getY() + e.size / 2,
+                                            p.startX, p.startY, currentEndX, currentEndY) <= 40) {
+                                        e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                    }
                                 }
                             }
                         }
                         p.setActive(false);
                         hit = true;
                     } else {
-                        for (Enemy e : enemies) {
-                            if (e != p.ignoredEnemy && p.getBounds().intersects(e.getBounds())) {
-                                e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
-                                if (p.isShocking) {
-                                    e.applyShock(1000, vfxManager, enemies);
-                                }
-                                p.setActive(false);
-
-                                if (p.bouncesLeft > 0) {
-                                    float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels
-                                            .getOrDefault(gameproject.skill.Upgrade.CHAIN_LIGHTNING, 0) * 0.05f);
-                                    // Chain Lightning Range (Lv1: 250px Lv5: 650px)
-                                    float maxRange = (150.0f
-                                            + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
-                                                    * 100))
-                                            * soulMulti;
-                                    Enemy closest = getClosestEnemy(e, enemies, maxRange);
-                                    if (closest != null) {
-                                        Projectile bounceProj = new Projectile(e.getX(), e.getY(), closest.getX(),
-                                                closest.getY(),
-                                                1.5f, 300f);
-                                        bounceProj.isShocking = true;
-                                        bounceProj.damage = (int) ((Math.max(1, p.damage / 5)
-                                                // Lv1: +4 Lv5: +20
-                                                + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
-                                                        * 4))
-                                                * soulMulti);
-                                        bounceProj.bouncesLeft = p.bouncesLeft - 1;
-                                        bounceProj.ignoredEnemy = e;
-                                        pendingProjectiles.add(bounceProj);
+                        synchronized (enemies) {
+                            for (Enemy e : enemies) {
+                                if (e != p.ignoredEnemy && p.getBounds().intersects(e.getBounds())) {
+                                    e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                    if (p.isShocking) {
+                                        e.applyShock(1000, vfxManager, enemies);
                                     }
+                                    p.setActive(false);
+
+                                    if (p.bouncesLeft > 0) {
+                                        float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels
+                                                .getOrDefault(gameproject.skill.Upgrade.CHAIN_LIGHTNING, 0) * 0.05f);
+                                        // Chain Lightning Range (Lv1: 250px Lv5: 650px)
+                                        float maxRange = (150.0f
+                                                + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
+                                                        * 100))
+                                                * soulMulti;
+                                        Enemy closest = getClosestEnemy(e, enemies, maxRange);
+                                        if (closest != null) {
+                                            Projectile bounceProj = new Projectile(e.getX(), e.getY(), closest.getX(),
+                                                    closest.getY(),
+                                                    1.5f, 300f);
+                                            bounceProj.isShocking = true;
+                                            bounceProj.damage = (int) ((Math.max(1, p.damage / 5)
+                                                    // Lv1: +4 Lv5: +20
+                                                    + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
+                                                            * 4))
+                                                    * soulMulti);
+                                            bounceProj.bouncesLeft = p.bouncesLeft - 1;
+                                            bounceProj.ignoredEnemy = e;
+                                            pendingProjectiles.add(bounceProj);
+                                        }
+                                    }
+                                    hit = true;
+                                    break;
                                 }
-                                hit = true;
-                                break;
                             }
                         }
                     }
@@ -303,11 +323,13 @@ public class EntityManager {
                         if (enemy.triggerCorrosiveMelt) {
                             vfxManager.addAcidZone(enemy.getX(), enemy.getY(), 80, currentTime);
                         }
-                        if (!enemy.isBoss && Math.random() < 0.01) {
-                            heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 10000));
-                        } else if (enemy.isBoss) {
-                            heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 20000));
-                            heartDrops.add(new HeartDrop(enemy.getX() + 30, enemy.getY(), currentTime + 20000));
+                        synchronized (heartDrops) {
+                            if (!enemy.isBoss && Math.random() < 0.01) {
+                                heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 10000));
+                            } else if (enemy.isBoss) {
+                                heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 20000));
+                                heartDrops.add(new HeartDrop(enemy.getX() + 30, enemy.getY(), currentTime + 20000));
+                            }
                         }
                         for (PassiveSkill skill : activeSkills) {
                             skill.onEnemyDeath(enemy, player, enemies, vfxManager, currentTime);
@@ -349,7 +371,13 @@ public class EntityManager {
                     newEnemies.addAll(summoned);
                 }
 
-                if (!player.isDashing() && !player.isInvulnerable() && player.getBounds().intersects(enemy.getBounds())
+                // Ý TƯỞNG A: Tăng tầm với tấn công (Attack Reach) để khắc phục lỗi nấp sau vật thể
+                float dx = (player.getX() + player.SIZE / 2f) - (enemy.getX() + enemy.size / 2f);
+                float dy = (player.getY() + player.SIZE / 2f) - (enemy.getY() + enemy.size / 2f);
+                float distSq = dx * dx + dy * dy;
+                float attackReach = (enemy.size + player.SIZE) * 0.8f; // Cân bằng lại tầm đánh sau khi đã tối ưu hitbox vật cản
+
+                if (!player.isDashing() && !player.isInvulnerable() && distSq < attackReach * attackReach
                         && !enemy.isDying) {
                     if (player.takeHit()) {
                         panel.triggerGameOver();
@@ -439,12 +467,14 @@ public class EntityManager {
         }
 
         // Xử lý Event Treasure
-        Iterator<EventTreasure> etIt = eventChests.iterator();
-        while (etIt.hasNext()) {
-            EventTreasure et = etIt.next();
-            if (player.getBounds().intersects(et.getBounds())) {
-                et.interact(panel);
-                etIt.remove();
+        synchronized (eventChests) {
+            Iterator<EventTreasure> etIt = eventChests.iterator();
+            while (etIt.hasNext()) {
+                EventTreasure et = etIt.next();
+                if (player.getBounds().intersects(et.getBounds())) {
+                    et.interact(panel);
+                    etIt.remove();
+                }
             }
         }
     }
@@ -542,6 +572,9 @@ public class EntityManager {
     public void drawGroundItems(Graphics g) {
         synchronized (weaponChests) {
             for (ChestDrop c : weaponChests) {
+                long remaining = c.expirationTime - GamePanel.getTickTime();
+                if (remaining < 3000 && (remaining / 150) % 2 == 0) continue;
+
                 int dx = (int) Math.round(c.x);
                 int dy = (int) Math.round(c.y);
                 java.awt.image.BufferedImage img = gameproject.ImageManager.get(c.isRare ? "chest2" : "chest1");
@@ -564,6 +597,9 @@ public class EntityManager {
 
         synchronized (heartDrops) {
             for (HeartDrop hd : heartDrops) {
+                long remaining = hd.expireTime - GamePanel.getTickTime();
+                if (remaining < 3000 && (remaining / 150) % 2 == 0) continue;
+                
                 int hdx = (int) Math.round(hd.x);
                 int hdy = (int) Math.round(hd.y);
                 java.awt.image.BufferedImage heartImg = gameproject.ImageManager.get("heart");
@@ -604,10 +640,12 @@ public class EntityManager {
     public void spawnResource(float x, float y, ResourceDrop.Type type, int amount, long currentTime, long duration) {
         int cap = (type == ResourceDrop.Type.GOLD) ? 100 : 10;
         int remaining = amount;
-        while (remaining > 0) {
-            int toSpawn = Math.min(remaining, cap);
-            resourceDrops.add(new ResourceDrop(x, y, type, toSpawn, currentTime + duration));
-            remaining -= toSpawn;
+        synchronized (resourceDrops) {
+            while (remaining > 0) {
+                int toSpawn = Math.min(remaining, cap);
+                resourceDrops.add(new ResourceDrop(x, y, type, toSpawn, currentTime + duration));
+                remaining -= toSpawn;
+            }
         }
     }
 }

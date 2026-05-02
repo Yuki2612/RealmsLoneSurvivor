@@ -62,14 +62,15 @@ public class GamePanel extends JPanel implements Runnable {
 
     private State currentState;
     public int currentFPS = 0;
-    
+
     // --- Hệ thống Thời gian Game (Managed Game Clock) ---
     private static long totalPausedTime = 0;
     private static long pauseStartTime = 0;
     private static boolean isPaused = false;
 
     public static long getTickTime() {
-        if (isPaused) return pauseStartTime - totalPausedTime;
+        if (isPaused)
+            return pauseStartTime - totalPausedTime;
         return System.currentTimeMillis() - totalPausedTime;
     }
 
@@ -116,7 +117,7 @@ public class GamePanel extends JPanel implements Runnable {
         SoundManager.load("laser", "app/res/laser.wav");
         SoundManager.load("shield", "app/res/shield.wav");
         SoundManager.load("pickup", "app/res/pickup.wav");
-        
+
         // Load player hurt sounds (giả định có 3 file)
         for (int i = 1; i <= 3; i++) {
             SoundManager.load("playerhurt" + i, "app/res/player" + i + "hurt.wav");
@@ -145,8 +146,9 @@ public class GamePanel extends JPanel implements Runnable {
             ImageManager.load("player" + i, "app/res/player" + i + ".png");
             ImageManager.load("enemy" + i, "app/res/enemy" + i + ".png");
 
-            // Load Animations (Cập nhật thông số chính xác từ thuộc tính ảnh)
             String prefix = "player" + i;
+            // NẠP ANIMATION LINH HOẠT: Ưu tiên đọc số frame từ tên file (ví dụ: _f15.png)
+            // Nếu không có, sẽ tự động dùng số frame mặc định bên dưới.
             ImageManager.loadAnimation(prefix + "_idle_side", "app/res/" + prefix + "_idle_side.png", 16);
             ImageManager.loadAnimation(prefix + "_run_side", "app/res/" + prefix + "_run_side.png", 10);
             ImageManager.loadAnimation(prefix + "_idle_down", "app/res/" + prefix + "_idle_down.png", 10);
@@ -170,6 +172,17 @@ public class GamePanel extends JPanel implements Runnable {
         ImageManager.load("treasure", "app/res/treasure.png");
         ImageManager.load("mimic", "app/res/mimic.png");
 
+        // Load Skill Icons
+        for (gameproject.skill.Upgrade u : gameproject.skill.Upgrade.values()) {
+            String fileName = u.name().toLowerCase();
+            if (u == gameproject.skill.Upgrade.SHIELD)
+                fileName = "hp";
+            else if (u == gameproject.skill.Upgrade.OPTICAL_SCOPE)
+                fileName = "range";
+
+            ImageManager.load("skill_" + u.name().toLowerCase(), "app/res/skill_" + fileName + ".png");
+        }
+
         PlayerData.load();
 
         buildings = new ArrayList<>();
@@ -185,12 +198,12 @@ public class GamePanel extends JPanel implements Runnable {
         // Quản lý dừng/tiếp tục thời gian game dựa trên State
         if (state instanceof gameproject.state.PlayingState) {
             resumeGame();
-        } else if (state instanceof gameproject.state.LevelUpState || 
-                   state instanceof gameproject.state.WeaponSelectState ||
-                   state instanceof gameproject.state.PauseState) {
+        } else if (state instanceof gameproject.state.LevelUpState ||
+                state instanceof gameproject.state.WeaponSelectState ||
+                state instanceof gameproject.state.PauseState) {
             pauseGame();
         }
-        
+
         this.currentState = state;
         updateMusic();
     }
@@ -221,13 +234,14 @@ public class GamePanel extends JPanel implements Runnable {
     public void startNewGame() {
         gameproject.state.PlayingState.resetEvents();
         CharacterClass charClass = PlayerData.selectedClass;
-        
-        // Tạo mới bản đồ cho mỗi lượt chơi để tăng tính ngẫu nhiên (Roguelike experience)
+
+        // Tạo mới bản đồ cho mỗi lượt chơi để tăng tính ngẫu nhiên (Roguelike
+        // experience)
         synchronized (buildings) {
             buildings.clear();
             mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings);
         }
-        
+
         player = new Player(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, charClass);
         score = 0;
         activeSkills.clear();

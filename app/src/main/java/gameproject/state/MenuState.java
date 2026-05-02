@@ -10,19 +10,25 @@ public class MenuState implements State {
         if (game.input.mouseClicked) {
             int mx = game.input.mouseX;
             int my = game.input.mouseY;
-            int btnX = game.screenWidth / 2 - 100;
-            if (mx >= btnX && mx <= btnX + 200) {
-                if (my >= game.screenHeight / 2 - 100 && my <= game.screenHeight / 2 - 50) {
+            
+            int btnW = 320;
+            int btnH = 50;
+            int btnX = (game.screenWidth - btnW) / 2;
+            int startY = game.screenHeight / 2 - 80;
+            int spacing = 62;
+
+            if (mx >= btnX && mx <= btnX + btnW) {
+                if (my >= startY && my <= startY + btnH) {
                     game.changeState(new CharacterSelectState());
-                } else if (my >= game.screenHeight / 2 - 30 && my <= game.screenHeight / 2 + 20) {
+                } else if (my >= startY + spacing && my <= startY + spacing + btnH) {
                     game.changeState(new StatsState());
-                } else if (my >= game.screenHeight / 2 + 40 && my <= game.screenHeight / 2 + 90) {
+                } else if (my >= startY + spacing * 2 && my <= startY + spacing * 2 + btnH) {
                     game.changeState(new SkillsState());
-                } else if (my >= game.screenHeight / 2 + 110 && my <= game.screenHeight / 2 + 160) {
+                } else if (my >= startY + spacing * 3 && my <= startY + spacing * 3 + btnH) {
                     game.changeState(new SettingsState());
-                } else if (my >= game.screenHeight / 2 + 180 && my <= game.screenHeight / 2 + 230) {
+                } else if (my >= startY + spacing * 4 && my <= startY + spacing * 4 + btnH) {
                     game.changeState(new GuideState());
-                } else if (my >= game.screenHeight / 2 + 250 && my <= game.screenHeight / 2 + 300) {
+                } else if (my >= startY + spacing * 5 && my <= startY + spacing * 5 + btnH) {
                     gameproject.meta.PlayerData.save();
                     System.exit(0);
                 }
@@ -33,6 +39,6 @@ public class MenuState implements State {
 
     @Override
     public void render(GamePanel game, Graphics g) {
-        MenuUI.draw(g, game.screenWidth, game.screenHeight);
+        MenuUI.draw(g, game.screenWidth, game.screenHeight, game.input.mouseX, game.input.mouseY);
     }
 }

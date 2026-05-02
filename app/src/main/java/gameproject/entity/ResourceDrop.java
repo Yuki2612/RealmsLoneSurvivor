@@ -70,9 +70,17 @@ public class ResourceDrop {
     }
 
     public void draw(java.awt.Graphics g) {
+        long currentTime = GamePanel.getTickTime();
+        long remaining = expireTime - currentTime;
+
+        // Nhấp nháy khi sắp biến mất (3 giây cuối)
+        if (remaining < 3000) {
+            if ((remaining / 150) % 2 == 0) return;
+        }
+
         java.awt.image.BufferedImage img = ImageManager.get(type == Type.GOLD ? "gold" : "soul");
-        int drawX = (int) Math.round(x) - GamePanel.instance.camIntX;
-        int drawY = (int) Math.round(y) - GamePanel.instance.camIntY;
+        int drawX = (int) Math.round(x);
+        int drawY = (int) Math.round(y);
 
         if (img != null) {
             g.drawImage(img, drawX - 12, drawY - 12, 24, 24, null);

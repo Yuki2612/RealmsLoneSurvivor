@@ -69,7 +69,7 @@ public class CharacterStatsUI {
         drawStatRow(g2d, "Atk Cooldown:", String.format("%.2fs", game.currentWeapon.cooldown / 1000f), col2X, startY + spacing * 3);
         drawStatRow(g2d, "Weapon Range:", String.format("%.0f px", game.currentWeapon.range), col2X, startY + spacing * 4);
         drawStatRow(g2d, "Vampirism:", vampLevel + "%", col2X, startY + spacing * 5);
-        drawStatRow(g2d, "Bullet Speed:", String.format("x%.2f", game.upgradeManager.bulletSpeedMulti), col2X, startY + spacing * 6);
+
 
         // Skills Section (Bottom)
         int skillY = py + 450;

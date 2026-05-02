@@ -43,10 +43,18 @@ public class TeleporterBoss extends Enemy {
 
                 // Dịch chuyển
                 float randomAngle = (float) (rand.nextDouble() * 2 * Math.PI);
-                this.x = playerX + (float) Math.cos(randomAngle) * 150f;
-                this.y = playerY + (float) Math.sin(randomAngle) * 150f;
-                this.x = Math.max(0, Math.min(this.x, screenW - size));
-                this.y = Math.max(0, Math.min(this.y, screenH - size));
+                float tx = playerX + (float) Math.cos(randomAngle) * 150f;
+                float ty = playerY + (float) Math.sin(randomAngle) * 150f;
+                
+                // Giới hạn biên thế giới (World Clamping)
+                tx = Math.max(0, Math.min(tx, gameproject.GamePanel.WORLD_WIDTH - size));
+                ty = Math.max(0, Math.min(ty, gameproject.GamePanel.WORLD_HEIGHT - size));
+
+                // Nếu điểm đến không vật cản, mới dịch chuyển (tránh kẹt trong tường)
+                if (panel.mapManager.isNavigable((int) tx + size / 2, (int) ty + size / 2)) {
+                    this.x = tx;
+                    this.y = ty;
+                }
 
                 teleportsLeft--;
                 teleportGap = 20; // 20 frame giữa mỗi lần dịch chuyển

@@ -123,7 +123,14 @@ public class Player implements Renderable {
             } else {
                 float nextX = x + dashDirX * DASH_SPEED;
                 float nextY = y + dashDirY * DASH_SPEED;
-                if (!game.mapManager.isColliding(nextX, nextY, SIZE, SIZE)) {
+                
+                // Sử dụng hitbox chân (Footprint) để va chạm mượt hơn
+                int footW = 16;
+                int footH = 10;
+                float fx = nextX + (SIZE - footW) / 2f;
+                float fy = nextY + SIZE - footH;
+
+                if (!game.mapManager.isColliding(fx, fy, footW, footH)) {
                     x = nextX;
                     y = nextY;
                 }
@@ -134,10 +141,15 @@ public class Player implements Renderable {
         } else {
             float currentDirX = 0, currentDirY = 0;
             float currentSpeed = speed * (1.0f + comboManager.getMoveSpeedBonus());
+            
+            int footW = 16;
+            int footH = 10;
 
             if (up && y > 0) {
                 float nextY = y - currentSpeed;
-                if (!game.mapManager.isColliding(x, nextY, SIZE, SIZE)) {
+                float fx = x + (SIZE - footW) / 2f;
+                float fy = nextY + SIZE - footH;
+                if (!game.mapManager.isColliding(fx, fy, footW, footH)) {
                     y = nextY;
                     currentDirY = -1;
                     isMoving = true;
@@ -146,7 +158,9 @@ public class Player implements Renderable {
             }
             if (down && y < GamePanel.WORLD_HEIGHT - SIZE) {
                 float nextY = y + currentSpeed;
-                if (!game.mapManager.isColliding(x, nextY, SIZE, SIZE)) {
+                float fx = x + (SIZE - footW) / 2f;
+                float fy = nextY + SIZE - footH;
+                if (!game.mapManager.isColliding(fx, fy, footW, footH)) {
                     y = nextY;
                     currentDirY = 1;
                     isMoving = true;
@@ -155,7 +169,9 @@ public class Player implements Renderable {
             }
             if (left && x > 0) {
                 float nextX = x - currentSpeed;
-                if (!game.mapManager.isColliding(nextX, y, SIZE, SIZE)) {
+                float fx = nextX + (SIZE - footW) / 2f;
+                float fy = y + SIZE - footH;
+                if (!game.mapManager.isColliding(fx, fy, footW, footH)) {
                     x = nextX;
                     currentDirX = -1;
                     isMoving = true;
@@ -165,7 +181,9 @@ public class Player implements Renderable {
             }
             if (right && x < GamePanel.WORLD_WIDTH - SIZE) {
                 float nextX = x + currentSpeed;
-                if (!game.mapManager.isColliding(nextX, y, SIZE, SIZE)) {
+                float fx = nextX + (SIZE - footW) / 2f;
+                float fy = y + SIZE - footH;
+                if (!game.mapManager.isColliding(fx, fy, footW, footH)) {
                     x = nextX;
                     currentDirX = 1;
                     isMoving = true;

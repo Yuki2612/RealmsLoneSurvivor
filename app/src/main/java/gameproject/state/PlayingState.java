@@ -18,12 +18,12 @@ import gameproject.environment.Building;
 
 public class PlayingState implements State {
     public enum EventType { NONE, ACID_RAIN, DARKNESS, MIMIC_MANIA, BLOOD_MOON }
-    public enum EventPhase { WARNING, ACTIVE }
+    public enum EventPhase { WARNING, ACTIVE, ENDING }
 
     public static EventType activeEvent = EventType.NONE;
     public static EventPhase eventPhase = EventPhase.WARNING;
     
-    private static long eventEndTime = 0;
+    public static long eventEndTime = 0;
     private static long nextPhaseTime = 0;
     private static int lastCheckedWave = 0;
     private static long lastDamageTick = 0;
@@ -155,22 +155,31 @@ public class PlayingState implements State {
 
         if (activeEvent != EventType.NONE) {
             // Timeout logic: Khi hết thời gian, các treasure chưa mở sẽ hóa mimic
+            // Timeout logic
             if (currentTime > eventEndTime) {
-                if (activeEvent == EventType.MIMIC_MANIA) {
-                    java.util.List<gameproject.entity.EventTreasure> chestsToConvert;
-                    synchronized (game.entityManager.eventChests) {
-                        chestsToConvert = new java.util.ArrayList<>(game.entityManager.eventChests);
-                        game.entityManager.eventChests.clear();
-                    }
-                    synchronized (game.entityManager.enemies) {
-                        for (gameproject.entity.EventTreasure et : chestsToConvert) {
-                            game.entityManager.enemies.add(new gameproject.entity.Mimic(et.x, et.y, wave));
+                if (eventPhase != EventPhase.ENDING) {
+                    // Chuyển sang phase kết thúc (dần dần sáng)
+                    eventPhase = EventPhase.ENDING;
+                    eventEndTime = currentTime + 3000; // 3 giây để tan biến bóng tối
+                    
+                    if (activeEvent == EventType.MIMIC_MANIA) {
+                        java.util.List<gameproject.entity.EventTreasure> chestsToConvert;
+                        synchronized (game.entityManager.eventChests) {
+                            chestsToConvert = new java.util.ArrayList<>(game.entityManager.eventChests);
+                            game.entityManager.eventChests.clear();
                         }
+                        synchronized (game.entityManager.enemies) {
+                            for (gameproject.entity.EventTreasure et : chestsToConvert) {
+                                game.entityManager.enemies.add(new gameproject.entity.Mimic(et.x, et.y, wave));
+                            }
+                        }
+                        game.vfxManager.showWaveBanner("THE REMAINING CHESTS AWAKEN!", Color.RED, currentTime);
                     }
-                    game.vfxManager.showWaveBanner("THE REMAINING CHESTS AWAKEN!", Color.RED, currentTime);
+                    return;
+                } else {
+                    activeEvent = EventType.NONE;
+                    return;
                 }
-                activeEvent = EventType.NONE;
-                return;
             }
 
             if (eventPhase == EventPhase.WARNING) {
@@ -182,15 +191,6 @@ public class PlayingState implements State {
                     else if (activeEvent == EventType.BLOOD_MOON) msg = "⚠ BLOOD MOON IN " + timeLeft + "s! PREPARE FOR CARNAGE!";
                     else if (activeEvent == EventType.MIMIC_MANIA) {
                         msg = "⚠ FIND TREASURES IN BUILDINGS! (" + timeLeft + "s)";
-                        // Spawn rương một lần duy nhất khi bắt đầu warning
-                        if (game.entityManager.eventChests.isEmpty()) {
-                            synchronized (game.buildings) {
-                                for (Building b : game.buildings) {
-                                    Rectangle r = b.getBounds();
-                                    game.entityManager.eventChests.add(new gameproject.entity.EventTreasure(r.x + r.width/2 - 20, r.y + r.height/2 - 20));
-                                }
-                            }
-                        }
                     }
                     
                     // Chỉ show banner mỗi giây
@@ -202,7 +202,16 @@ public class PlayingState implements State {
                     eventPhase = EventPhase.ACTIVE;
                     String startMsg = "NIGHTFALL!";
                     if (activeEvent == EventType.ACID_RAIN) startMsg = "ACID RAIN ACTIVE!";
-                    else if (activeEvent == EventType.MIMIC_MANIA) startMsg = "FIND THEM BEFORE THEY AWAKEN!";
+                    else if (activeEvent == EventType.MIMIC_MANIA) {
+                        startMsg = "FIND THEM BEFORE THEY AWAKEN!";
+                        // Spawn rương khi bắt đầu phase ACTIVE (hết 10s đếm ngược)
+                        synchronized (game.buildings) {
+                            for (Building b : game.buildings) {
+                                java.awt.Rectangle r = b.getBounds();
+                                game.entityManager.eventChests.add(new gameproject.entity.EventTreasure(r.x + r.width/2 - 20, r.y + r.height/2 - 20));
+                            }
+                        }
+                    }
                     else if (activeEvent == EventType.BLOOD_MOON) startMsg = "THE BLOOD MOON RISES!";
                     
                     game.vfxManager.showWaveBanner(startMsg, Color.RED, currentTime);
@@ -237,13 +246,9 @@ public class PlayingState implements State {
 
     private void triggerShoot(GamePanel game, long currentTime) {
         int critLevel = game.player.getUpgradeLevel(Upgrade.CRIT_CHANCE);
-        int finalDamage = game.upgradeManager.playerDamage;
         float baseCrit = gameproject.meta.PlayerData.statCritLevel * 0.01f;
         float totalCrit = baseCrit + (critLevel * 0.07f);
         boolean isCrit = totalCrit > 0 && Math.random() < totalCrit;
-        if (isCrit) {
-            finalDamage = (int) (finalDamage * 1.5);
-        }
 
         int bouncesAndPierces = game.player.getUpgradeLevel(Upgrade.CHAIN_LIGHTNING);
 
@@ -254,7 +259,7 @@ public class PlayingState implements State {
         // Ghi lại số lượng đạn trước khi bắn để xác định đạn mới
         int prevSize = game.entityManager.projectiles.size();
         game.currentWeapon.shoot(game.player.getX(), game.player.getY(), worldMouseX, worldMouseY,
-                game.upgradeManager.bulletSpeedMulti, finalDamage, bouncesAndPierces, game.entityManager.projectiles,
+                game.upgradeManager.playerDamage, bouncesAndPierces, game.entityManager.projectiles,
                 currentTime);
 
         // Gán flag isCrit cho tất cả đạn vừa được thêm

@@ -8,13 +8,23 @@ public class WoodenCrate extends Obstacle {
 
     public WoodenCrate(int x, int y, int width, int height) {
         super(x, y, width, height);
-        // Tăng kích cỡ hitbox để lấp đầy ô lưới
-        this.hitbox = new AABBHitbox(x, y, width, height);
+        // TỐI ƯU: Chuyển sang "Hitbox chân" giống Cây và Đá
+        // Điều này giúp quái có thể áp sát người chơi từ phía đối diện thùng gỗ dễ dàng hơn
+        int hbW = 32;
+        int hbH = 16; 
+        this.hitbox = new AABBHitbox(x + (width - hbW) / 2f, y + height - hbH - 4, hbW, hbH);
     }
 
     @Override
     public boolean isSolid() {
         return true;
+    }
+
+    @Override
+    public float getBottomY() {
+        // Tối ưu Y-sorting: Điểm chân của thùng gỗ nên ở gần đáy sprite
+        // Giảm một chút để người chơi dễ dàng đứng "trước" thùng hơn
+        return y + height - 8;
     }
 
     @Override

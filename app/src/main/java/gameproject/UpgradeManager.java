@@ -24,7 +24,7 @@ public class UpgradeManager {
 
     // Những chỉ số gốc của Player được quản lý tập trung ở đây
     public int playerDamage = 10;
-    public float bulletSpeedMulti = 1.0f;
+
 
     // Lưu 3 thẻ nâng cấp hiện tại trên màn hình
     public Upgrade[] currentUpgradeOptions;
@@ -34,7 +34,7 @@ public class UpgradeManager {
         currentExp = 0;
         expToNextLevel = 100;
         playerDamage = 10 + gameproject.meta.PlayerData.statDamageLevel;
-        bulletSpeedMulti = 1.0f;
+
 
         if (startingLevel > 1) {
             // Tính toán tổng EXP cần thiết để đạt đến level mong muốn
@@ -165,7 +165,7 @@ public class UpgradeManager {
                 case FIRE_RATE -> currentWeapon.cooldown = (long) (currentWeapon.cooldown * 0.91);
                 case MOVE_SPEED -> player.upgradeSpeed(0.3f);
                 case DASH_COOLDOWN -> player.upgradeDashCooldown(150);
-                case BULLET_SPEED -> bulletSpeedMulti += 0.12f;
+
                 case VAMPIRISM -> {
                     boolean hasVamp = false;
                     for (PassiveSkill s : activeSkills) {

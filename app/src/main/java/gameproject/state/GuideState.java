@@ -6,7 +6,7 @@ import gameproject.ui.GuideUI;
 
 public class GuideState implements State {
     private int currentPage = 0;
-    private final int MAX_PAGES = 3;
+    private final int MAX_PAGES = 6;
 
     @Override
     public void update(GamePanel game) {

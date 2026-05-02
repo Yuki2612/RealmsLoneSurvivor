@@ -24,8 +24,7 @@ public class AABBHitbox implements Hitbox {
 
     @Override
     public void draw(Graphics g) {
-        g.drawRect((int) Math.round(x) - gameproject.GamePanel.instance.camIntX,
-                (int) Math.round(y) - gameproject.GamePanel.instance.camIntY, (int) width, (int) height);
+        g.drawRect((int) Math.round(x), (int) Math.round(y), (int) width, (int) height);
     }
 
     @Override

@@ -33,24 +33,20 @@ public class EnemyController {
         float dirX = panel.mapManager.getFlowDirX(centerX, centerY);
         float dirY = panel.mapManager.getFlowDirY(centerX, centerY);
 
-        // Cận chiến: Bỏ qua FlowField nếu sát Player để lao vào
+        // Tính khoảng cách để phục vụ logic giãn cách bầy đàn
         float dxP = panel.player.getX() - enemy.x;
         float dyP = panel.player.getY() - enemy.y;
         float distSqP = dxP * dxP + dyP * dyP;
 
-        if (distSqP < (TILE_SIZE * 0.8f) * (TILE_SIZE * 0.8f)) {
-            float d = (float) Math.sqrt(distSqP);
-            if (d > 0) {
-                dirX = dxP / d;
-                dirY = dyP / d;
-            }
-        }
+
 
         // 2. LỰC ĐẨY BẦY ĐÀN (Tách nhau ra)
         float[] sep = calculateSeparation(enemy, panel.entityManager.enemies);
 
         // TỐI ƯU: Giảm lực đẩy khi áp sát người chơi để quái có thể "chạm" vào player dễ hơn
-        float sepWeight = (distSqP < 40000) ? 0.25f : 0.6f; 
+        float sepWeight = 0.6f;
+        if (distSqP < 10000) sepWeight = 0.05f; // Rất nhỏ khi sát player
+        else if (distSqP < 40000) sepWeight = 0.2f; 
 
         // 3. VẬT LÝ QUÁN TÍNH
         float targetVelX = (dirX * currentSpeed) + sep[0] * sepWeight;
@@ -88,6 +84,10 @@ public class EnemyController {
             enemy.kbX = 0;
         if (Math.abs(enemy.kbY) < 0.1f)
             enemy.kbY = 0;
+
+        // 6. GIỚI HẠN BIÊN THẾ GIỚI (World Clamping)
+        enemy.x = Math.max(0, Math.min(enemy.x, GamePanel.WORLD_WIDTH - enemy.size));
+        enemy.y = Math.max(0, Math.min(enemy.y, GamePanel.WORLD_HEIGHT - enemy.size));
     }
 
     /**

@@ -15,7 +15,7 @@ public class HellfireBoomstick extends Weapon {
 
     @Override
     public void shoot(float startX, float startY, float targetX, float targetY,
-            float bulletSpeedMulti, int playerDamage, int bounces,
+            int playerDamage, int bounces,
             ArrayList<Projectile> projectiles, long currentTime) {
 
         lastShootTime = currentTime;
@@ -34,7 +34,7 @@ public class HellfireBoomstick extends Weapon {
             float tx = startX + (float) Math.cos(radians) * 100;
             float ty = startY + (float) Math.sin(radians) * 100;
 
-            Projectile p = new Projectile(startX, startY, tx, ty, bulletSpeedMulti, range);
+            Projectile p = new Projectile(startX, startY, tx, ty, 1.0f, range);
             p.damage = (int) (playerDamage * damageMultiplier);
             p.isPlayerExplosive = true;
             p.isHellfire = true;

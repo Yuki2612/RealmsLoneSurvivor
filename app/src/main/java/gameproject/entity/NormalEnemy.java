@@ -51,10 +51,7 @@ public class NormalEnemy extends Enemy {
         // Gọi bộ não AI tập trung để xử lý di chuyển và va chạm (Sliding Collision)
         EnemyController.moveEnemy(this, panel, speedMultiplier);
 
-        // AI Phá vật cản (Giữ nguyên tính năng đặc trưng của bạn)
-        float fdx = panel.mapManager.getFlowDirX((int) x + size / 2, (int) y + size / 2);
-        float fdy = panel.mapManager.getFlowDirY((int) x + size / 2, (int) y + size / 2);
-        handleObstacleBreaking(fdx * speed, fdy * speed, panel);
+
     }
 
     @Override
