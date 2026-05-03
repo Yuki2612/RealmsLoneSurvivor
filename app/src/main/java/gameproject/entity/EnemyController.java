@@ -30,6 +30,28 @@ public class EnemyController {
         int centerX = bounds.x + bounds.width / 2;
         int centerY = bounds.y + bounds.height / 2;
 
+        // 1. CƠ CHẾ THOÁT HIỂM KHẨN CẤP (EMERGENCY UNSTUCK)
+        // Nếu quái lỡ bị kẹt sâu trong tường, đẩy chúng ra hướng thoáng nhất
+        if (panel.mapManager.isSolid(centerX, centerY)) {
+            // Thử đẩy ra 4 hướng chính
+            int pushDist = 16;
+            if (!panel.mapManager.isSolid(centerX - pushDist, centerY)) enemy.x -= 8;
+            else if (!panel.mapManager.isSolid(centerX + pushDist, centerY)) enemy.x += 8;
+            else if (!panel.mapManager.isSolid(centerX, centerY - pushDist)) enemy.y -= 8;
+            else if (!panel.mapManager.isSolid(centerX, centerY + pushDist)) enemy.y += 8;
+            else {
+                // Nếu kẹt cứng mọi hướng, đẩy về phía người chơi (thường là vùng an toàn)
+                float toPX = panel.player.getX() - enemy.x;
+                float toPY = panel.player.getY() - enemy.y;
+                float dist = (float)Math.sqrt(toPX*toPX + toPY*toPY);
+                if (dist > 0) {
+                    enemy.x += (toPX / dist) * 10;
+                    enemy.y += (toPY / dist) * 10;
+                }
+            }
+        }
+
+        // 2. LẤY HƯỚNG TỪ FLOW FIELD
         float dirX = panel.mapManager.getFlowDirX(centerX, centerY);
         float dirY = panel.mapManager.getFlowDirY(centerX, centerY);
 
@@ -38,9 +60,7 @@ public class EnemyController {
         float dyP = panel.player.getY() - enemy.y;
         float distSqP = dxP * dxP + dyP * dyP;
 
-
-
-        // 2. LỰC ĐẨY BẦY ĐÀN (Tách nhau ra)
+        // 3. LỰC ĐẨY BẦY ĐÀN (Tách nhau ra)
         float[] sep = calculateSeparation(enemy, panel.entityManager.enemies);
 
         // TỐI ƯU: Giảm lực đẩy khi áp sát người chơi để quái có thể "chạm" vào player dễ hơn
@@ -94,11 +114,11 @@ public class EnemyController {
      * Thuật toán phát hiện và đẩy trượt vật lý.
      * Biến quái vật thành một hình tròn ở sát chân để tương tác mượt với môi trường.
      */
-    private static boolean resolveHybridCollision(Enemy enemy, MapManager map) {
+    public static boolean resolveHybridCollision(Enemy enemy, MapManager map) {
         boolean collided = false;
-        float radius = enemy.size * 0.3f;
+        float radius = enemy.size * 0.35f; // Tăng nhẹ để chân quái cảm giác "đầm" hơn
         float cx = enemy.x + enemy.size / 2.0f;
-        float cy = enemy.y + enemy.size - radius;
+        float cy = enemy.y + enemy.size * 0.85f; // Đặt tâm va chạm ở chân quái
 
         List<Obstacle> nearObs = map.getObstaclesInRadius(cx, cy, radius * 2 + TILE_SIZE);
 
@@ -116,12 +136,23 @@ public class EnemyController {
                 if (distSq < minDist * minDist) {
                     collided = true;
                     float dist = (float) Math.sqrt(distSq);
-                    if (dist == 0) { dx = 1; dist = 1; }
+                    // Nếu tâm trùng nhau, tạo một hướng đẩy ngẫu nhiên nhẹ để không bị kẹt cứng
+                    if (dist < 0.1f) {
+                        dx = (float)Math.random() - 0.5f;
+                        dy = (float)Math.random() - 0.5f;
+                        dist = (float)Math.sqrt(dx*dx + dy*dy);
+                    }
+                    
                     float overlap = minDist - dist;
-                    enemy.x += (dx / dist) * overlap;
-                    enemy.y += (dy / dist) * overlap;
+                    float nx = dx / dist;
+                    float ny = dy / dist;
+
+                    enemy.x += nx * overlap;
+                    enemy.y += ny * overlap;
+                    
+                    // Cập nhật lại tâm ngay lập tức cho các lần kiểm tra vật thể tiếp theo
                     cx = enemy.x + enemy.size / 2.0f;
-                    cy = enemy.y + enemy.size - radius;
+                    cy = enemy.y + enemy.size * 0.85f;
                 }
             } else if (hb instanceof AABBHitbox) {
                 AABBHitbox ab = (AABBHitbox) hb;
@@ -150,7 +181,7 @@ public class EnemyController {
                     else enemy.y += (db + radius);
                 }
                 cx = enemy.x + enemy.size / 2.0f;
-                cy = enemy.y + enemy.size - radius;
+                cy = enemy.y + enemy.size * 0.85f;
             }
         }
         return collided;

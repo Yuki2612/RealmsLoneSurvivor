@@ -40,7 +40,7 @@ public class NormalEnemy extends Enemy {
                 this.tier = 5;
             }
         }
-        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.1f));
+        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.13f));
         this.hp = this.maxHp;
     }
 
@@ -50,7 +50,6 @@ public class NormalEnemy extends Enemy {
 
         // Gọi bộ não AI tập trung để xử lý di chuyển và va chạm (Sliding Collision)
         EnemyController.moveEnemy(this, panel, speedMultiplier);
-
 
     }
 

@@ -26,21 +26,25 @@ public class PoisonCloudSkill implements PassiveSkill {
         if (level <= 0)
             return;
 
-        Iterator<Cloud> it = clouds.iterator();
-        while (it.hasNext()) {
-            Cloud c = it.next();
-            if (currentTime > c.expireTime) {
-                it.remove();
-                continue;
-            }
+        synchronized (clouds) {
+            Iterator<Cloud> it = clouds.iterator();
+            while (it.hasNext()) {
+                Cloud c = it.next();
+                if (currentTime > c.expireTime) {
+                    it.remove();
+                    continue;
+                }
 
-            float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.POISON_CLOUD, 0) * 0.05f);
-            // Lv1: 60px  Lv5: 140px
-            int radius = (int) ((40 + (level * 20)) * soulMulti);
-            Rectangle cloudBox = new Rectangle((int) c.x - radius, (int) c.y - radius, radius * 2, radius * 2);
-            for (Enemy e : enemies) {
-                if (e.getBounds().intersects(cloudBox)) {
-                    e.applyPoison(3000);
+                float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.POISON_CLOUD, 0) * 0.05f);
+                // Lv1: 60px  Lv5: 140px
+                int radius = (int) ((40 + (level * 20)) * soulMulti);
+                Rectangle cloudBox = new Rectangle((int) c.x - radius, (int) c.y - radius, radius * 2, radius * 2);
+                synchronized (enemies) {
+                    for (Enemy e : enemies) {
+                        if (e.getBounds().intersects(cloudBox)) {
+                            e.applyPoison(3000);
+                        }
+                    }
                 }
             }
         }
@@ -53,11 +57,13 @@ public class PoisonCloudSkill implements PassiveSkill {
             return;
 
         g.setColor(new Color(0, 255, 0, 80)); // Màu xanh lá trong suốt
-        for (Cloud c : clouds) {
-            float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.POISON_CLOUD, 0) * 0.05f);
-            // Lv1: 60px  Lv5: 140px
-            int radius = (int) ((40 + (level * 20)) * soulMulti);
-            g.fillOval((int) c.x - radius, (int) c.y - radius, radius * 2, radius * 2);
+        synchronized (clouds) {
+            for (Cloud c : clouds) {
+                float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.POISON_CLOUD, 0) * 0.05f);
+                // Lv1: 60px  Lv5: 140px
+                int radius = (int) ((40 + (level * 20)) * soulMulti);
+                g.fillOval((int) c.x - radius, (int) c.y - radius, radius * 2, radius * 2);
+            }
         }
     }
 
@@ -72,7 +78,9 @@ public class PoisonCloudSkill implements PassiveSkill {
             c.x = deadEnemy.getX() + deadEnemy.getBounds().width / 2;
             c.y = deadEnemy.getY() + deadEnemy.getBounds().height / 2;
             c.expireTime = currentTime + 4000; // Tồn tại 4 giây
-            clouds.add(c);
+            synchronized (clouds) {
+                clouds.add(c);
+            }
         }
     }
 }

@@ -22,10 +22,12 @@ public class MeteorStrikeSkill implements PassiveSkill {
                 float targetX = player.getX() + (float) (Math.random() * 400 - 200);
                 float targetY = player.getY() + (float) (Math.random() * 400 - 200);
 
-                if (!enemies.isEmpty()) {
-                    Enemy e = enemies.get((int) (Math.random() * enemies.size()));
-                    targetX = e.getX();
-                    targetY = e.getY();
+                synchronized (enemies) {
+                    if (!enemies.isEmpty()) {
+                        Enemy e = enemies.get((int) (Math.random() * enemies.size()));
+                        targetX = e.getX();
+                        targetY = e.getY();
+                    }
                 }
 
                 float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.METEOR_STRIKE, 0) * 0.05f);
@@ -35,11 +37,13 @@ public class MeteorStrikeSkill implements PassiveSkill {
                 vfxManager.addExplosion(targetX, targetY, radius, currentTime);
                 gameproject.SoundManager.play("explosion");
 
-                for (Enemy e : enemies) {
-                    float dist = (float) Math.sqrt(Math.pow(e.getX() - targetX, 2) + Math.pow(e.getY() - targetY, 2));
-                    if (dist <= radius) {
-                        e.takeDamage(damage, vfxManager, currentTime);
-                        e.applyBurn(3000, vfxManager); // Meteor applies burn
+                synchronized (enemies) {
+                    for (Enemy e : enemies) {
+                        float dist = (float) Math.sqrt(Math.pow(e.getX() - targetX, 2) + Math.pow(e.getY() - targetY, 2));
+                        if (dist <= radius) {
+                            e.takeDamage(damage, vfxManager, currentTime);
+                            e.applyBurn(3000, vfxManager); // Meteor applies burn
+                        }
                     }
                 }
             }

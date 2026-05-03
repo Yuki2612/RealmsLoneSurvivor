@@ -55,10 +55,11 @@ public abstract class Enemy implements gameproject.Renderable {
     public long plasmaCooldown = 0;
 
     // ── Phase-1 VFX ──────────────────────────────────────────────
-    private long hitFlashEndTime = 0; // White flash khi nhận damage
-    private long deathFadeStartTime = -1; // -1 = chưa bắt đầu chết
+    protected long hitFlashEndTime = 0; // White flash khi nhận damage
+    protected long deathFadeStartTime = -1; // -1 = chưa bắt đầu chết
     public long deathFadeDuration = 300;
     public boolean isDying = false; // đang trong animation chết
+    public boolean rewardDropped = false; // đã rơi đồ chưa
 
     public Enemy(float x, float y, int size, int maxHp, float speed, Color color) {
         this.x = x;
@@ -87,18 +88,18 @@ public abstract class Enemy implements gameproject.Renderable {
 
     public void updateStatusEffects(long currentTime, VFXManager vfxManager) {
         if (burnEndTime > currentTime && currentTime - lastBurnTick >= 500) {
-            // Burn DoT: 33% playerDamage/tick
-            takeDamage(Math.max(3, playerDamageCache / 3), vfxManager, currentTime);
+            // Burn DoT: 25% playerDamage/tick
+            takeDamage(Math.max(3, playerDamageCache / 4), vfxManager, currentTime);
             lastBurnTick = currentTime;
         }
         if (plasmaEndTime > currentTime && currentTime - lastPlasmaTick >= 500) {
-            // Plasma DoT: 50% playerDamage/tick
-            takeDamage(Math.max(5, playerDamageCache / 2), vfxManager, currentTime);
+            // Plasma DoT: 33% playerDamage/tick
+            takeDamage(Math.max(5, playerDamageCache / 3), vfxManager, currentTime);
             lastPlasmaTick = currentTime;
         }
         if (poisonEndTime > currentTime && currentTime - lastPoisonTick >= 500) {
-            // Poison DoT: 20% playerDamage/tick
-            takeDamage(Math.max(2, playerDamageCache / 5), vfxManager, currentTime);
+            // Poison DoT: 10% playerDamage/tick
+            takeDamage(Math.max(2, playerDamageCache / 10), vfxManager, currentTime);
             lastPoisonTick = currentTime;
         }
     }
@@ -229,7 +230,7 @@ public abstract class Enemy implements gameproject.Renderable {
 
     /** Kiểm tra quái đã cạn kiệt HP (dùng bởi passive skills, va chạm, etc.) */
     public boolean isDead() {
-        return this.hp <= 0;
+        return this.hp <= 0 || isDying;
     }
 
     /** Kiểm tra đã xong animation fade và có thể xóa khỏi danh sách */
@@ -247,6 +248,10 @@ public abstract class Enemy implements gameproject.Renderable {
 
     public float getY() {
         return y;
+    }
+
+    public int getSize() {
+        return size;
     }
 
     public int getMaxHp() {
@@ -321,5 +326,9 @@ public abstract class Enemy implements gameproject.Renderable {
 
     public int getHp() {
         return hp;
+    }
+
+    public String getName() {
+        return isBoss ? "ELITE BOSS" : "ENEMY";
     }
 }

@@ -133,6 +133,10 @@ public class PlayingState implements State {
                 b.update(game.player);
             }
         }
+        // --- KIỂM TRA GAME OVER ---
+        if (game.player.getHearts() <= 0) {
+            game.triggerGameOver();
+        }
     }
 
     private void handleEvents(GamePanel game, long currentTime) {
@@ -369,7 +373,7 @@ public class PlayingState implements State {
         game.vfxManager.resetScreenShake(g2d);
         // Overlay toàn màn hình (Bóng tối, bão acid, flash đỏ, wave banner)
         long now = gameproject.GamePanel.getTickTime();
-        game.vfxManager.drawOverlays(g, game.screenWidth, game.screenHeight, now, game);
+        game.vfxManager.drawOverlay(g, game, game.screenWidth, game.screenHeight, now);
 
         // --- HUD --- (Vẽ HUD sau cùng để nổi lên trên các hiệu ứng môi trường)
         gameproject.ui.HUD.draw(g, game, game.player, game.entityManager.enemies);

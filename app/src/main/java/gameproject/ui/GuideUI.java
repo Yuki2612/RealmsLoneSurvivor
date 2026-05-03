@@ -41,16 +41,19 @@ public class GuideUI {
             g.drawString("1. BASICS & CONTROLS:", startX, startY);
             g.setColor(Color.WHITE);
             g.drawString("- W, A, S, D: Move your character.", startX, startY + lineH);
-            g.drawString("- Left Mouse (Click/Hold): Shoot your weapon.", startX, startY + lineH * 2);
-            g.drawString("- Shift: Dash to dodge damage and pass through enemies.", startX, startY + lineH * 3);
+            g.drawString("- Left Mouse (Hold): Shoot your weapon.", startX, startY + lineH * 2);
+            g.drawString("- Shift: Dash to dodge and pass through enemies.", startX, startY + lineH * 3);
+            g.drawString("- M: Toggle Large Map / Minimap.", startX, startY + lineH * 4);
+            g.drawString("- I: Show Character Stats & Inventory.", startX, startY + lineH * 5);
+            g.drawString("- ESC: Pause the game / Return to Menu.", startX, startY + lineH * 6);
 
             g.setColor(Color.YELLOW);
-            g.drawString("2. GAMEPLAY LOOP:", startX, startY + lineH * 5);
+            g.drawString("2. GAMEPLAY LOOP:", startX, startY + lineH * 8);
             g.setColor(Color.WHITE);
-            g.drawString("- Kill enemies to earn EXP. Collect them to Level Up.", startX, startY + lineH * 6);
-            g.drawString("- Choose upgrades carefully to survive the increasing horde.", startX, startY + lineH * 7);
-            g.drawString("- A Boss appears every 5 Waves. Defeat it for a Weapon Chest.", startX, startY + lineH * 8);
-            g.drawString("- Collect Soul Stones to buy permanent upgrades in SKILLS menu.", startX, startY + lineH * 9);
+            g.drawString("- Kill enemies to earn EXP. Collect them to Level Up.", startX, startY + lineH * 9);
+            g.drawString("- Choose upgrades carefully to survive the increasing horde.", startX, startY + lineH * 10);
+            g.drawString("- A Boss appears every 5 Waves. Defeat it for a Weapon Chest.", startX, startY + lineH * 11);
+            g.drawString("- Collect Soul Stones to buy permanent upgrades in SKILLS menu.", startX, startY + lineH * 12);
         } else if (currentPage == 1) {
             g.setColor(Color.YELLOW);
             g.drawString("3. ELEMENTAL REACTIONS:", startX, startY);

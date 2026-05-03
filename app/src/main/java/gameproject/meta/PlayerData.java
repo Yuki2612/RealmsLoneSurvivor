@@ -9,7 +9,7 @@ public class PlayerData {
     public static int soulStones = 0;
     public static Set<CharacterClass> unlockedClasses = new HashSet<>();
     public static Set<gameproject.skill.Upgrade> unlockedSkills = new HashSet<>();
-    public static CharacterClass selectedClass = CharacterClass.MERCENARY;
+    public static CharacterClass selectedClass = CharacterClass.YUKI;
 
     public static String getPlayerImageKey() {
         return "player" + (selectedClass.ordinal() + 1);
@@ -31,13 +31,13 @@ public class PlayerData {
     private static final String SAVE_FILE = "savegame.dat";
 
     public static void load() {
-        unlockedClasses.add(CharacterClass.MERCENARY); // Luôn mở khóa Mercenary
+        unlockedClasses.add(CharacterClass.YUKI); // Luôn mở khóa Yuki
         
         // Default unlocked skills (excluding Shield, Meteor, Pulsewave)
         unlockedSkills.add(gameproject.skill.Upgrade.CHAIN_LIGHTNING);
         unlockedSkills.add(gameproject.skill.Upgrade.TRAIL_OF_FIRE);
         unlockedSkills.add(gameproject.skill.Upgrade.ORBITING_ORBS);
-        unlockedSkills.add(gameproject.skill.Upgrade.EXPLOSIVE_CORPSE);
+        unlockedSkills.add(gameproject.skill.Upgrade.EXPLOSIVE_BULLETS);
         unlockedSkills.add(gameproject.skill.Upgrade.FROST_AURA);
         unlockedSkills.add(gameproject.skill.Upgrade.POISON_CLOUD);
 

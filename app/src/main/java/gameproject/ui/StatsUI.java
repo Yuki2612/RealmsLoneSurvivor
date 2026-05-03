@@ -160,11 +160,11 @@ public class StatsUI {
         g2d.drawString("Lv: " + levels[idx] + "/" + maxLevels[idx], cx - 25, cy + 10);
 
         if (isHovered) {
-            drawStatTooltip(g2d, names[idx], descs[idx], levels[idx], maxLevels[idx], gold, totalUpgrades, idx, mx, my);
+            drawStatTooltip(g2d, names[idx], descs[idx], levels[idx], maxLevels[idx], gold, idx, mx, my);
         }
     }
 
-    private static void drawStatTooltip(Graphics2D g2d, String name, String desc, int lv, int max, int gold, int total, int idx, int mx, int my) {
+    private static void drawStatTooltip(Graphics2D g2d, String name, String desc, int lv, int max, int gold, int idx, int mx, int my) {
         int tw = 220, th = 110;
         int tx = mx + 20, ty = my + 20;
         
@@ -181,7 +181,7 @@ public class StatsUI {
         g2d.drawString(desc, tx + 15, ty + 55);
 
         if (lv < max) {
-            int cost = (int)(getCost(idx, total));
+            int cost = (int)(getCost(idx, lv));
             g2d.setColor(gold >= cost ? Color.GREEN : Color.RED);
             g2d.drawString("Upgrade Cost: " + cost, tx + 15, ty + 85);
         } else {
@@ -205,8 +205,8 @@ public class StatsUI {
             return true;
         } catch(Exception e) { return true; }
     }
-    private static int getCost(int idx, int total) {
+    private static int getCost(int idx, int level) {
         int[] baseCosts = {80, 250, 120, 100, 180, 220};
-        return (int)(baseCosts[idx] * Math.pow(1.06, total));
+        return (int)(baseCosts[idx] * Math.pow(1.1, level));
     }
 }

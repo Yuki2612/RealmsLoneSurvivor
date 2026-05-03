@@ -13,4 +13,8 @@ public interface PassiveSkill {
 
     void onEnemyDeath(Enemy deadEnemy, Player player, ArrayList<Enemy> enemies, VFXManager vfxManager,
             long currentTime);
+
+    default void onProjectileHit(gameproject.weapon.Projectile p, Enemy e, Player player, VFXManager vfxManager,
+            long currentTime) {
+    }
 }

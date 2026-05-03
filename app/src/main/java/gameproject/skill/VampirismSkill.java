@@ -19,7 +19,7 @@ public class VampirismSkill implements PassiveSkill {
     public void onEnemyDeath(Enemy deadEnemy, Player player, ArrayList<Enemy> enemies, VFXManager vfxManager,
             long currentTime) {
         int level = player.getUpgradeLevel(Upgrade.VAMPIRISM);
-        if (level > 0 && Math.random() < (level * 0.01f)) {
+        if (level > 0 && Math.random() < (level * 0.005f)) {
             player.addHeart();
         }
     }

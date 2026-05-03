@@ -9,7 +9,7 @@ import gameproject.skill.PassiveSkill;
 import gameproject.skill.OrbitingOrbsSkill;
 import gameproject.skill.TrailOfFireSkill;
 import gameproject.skill.FrostAuraSkill;
-import gameproject.skill.ExplosiveCorpseSkill;
+import gameproject.skill.ExplosiveBulletsSkill;
 import gameproject.skill.VampirismSkill;
 import gameproject.skill.PoisonCloudSkill;
 import gameproject.skill.EnergyShieldSkill;
@@ -134,7 +134,7 @@ public class UpgradeManager {
                 if ((upgrade == Upgrade.ORBITING_ORBS && s instanceof OrbitingOrbsSkill) ||
                         (upgrade == Upgrade.TRAIL_OF_FIRE && s instanceof TrailOfFireSkill) ||
                         (upgrade == Upgrade.FROST_AURA && s instanceof FrostAuraSkill) ||
-                        (upgrade == Upgrade.EXPLOSIVE_CORPSE && s instanceof ExplosiveCorpseSkill) ||
+                        (upgrade == Upgrade.EXPLOSIVE_BULLETS && s instanceof ExplosiveBulletsSkill) ||
                         (upgrade == Upgrade.POISON_CLOUD && s instanceof PoisonCloudSkill)) {
                     hasSkill = true;
                     break;
@@ -147,8 +147,8 @@ public class UpgradeManager {
                     activeSkills.add(new TrailOfFireSkill());
                 else if (upgrade == Upgrade.FROST_AURA)
                     activeSkills.add(new FrostAuraSkill());
-                else if (upgrade == Upgrade.EXPLOSIVE_CORPSE)
-                    activeSkills.add(new ExplosiveCorpseSkill());
+                else if (upgrade == Upgrade.EXPLOSIVE_BULLETS)
+                    activeSkills.add(new ExplosiveBulletsSkill());
                 else if (upgrade == Upgrade.POISON_CLOUD)
                     activeSkills.add(new PoisonCloudSkill());
                 else if (upgrade == Upgrade.ENERGY_SHIELD)

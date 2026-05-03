@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class SMG extends Weapon {
     public SMG() {
-        super("SMG", 0.5f, 150, true, 250f);
+        super("SMG", 0.45f, 150, true, 250f);
     }
 
     @Override

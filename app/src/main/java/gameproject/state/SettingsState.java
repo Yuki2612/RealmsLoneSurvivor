@@ -77,7 +77,7 @@ public class SettingsState implements State {
                         gameproject.meta.PlayerData.soulStones += 100;
                     }
                     if (mx >= cardX + (cardW+spacing)*2 && mx <= cardX + (cardW+spacing)*2 + cardW && my >= cardY && my <= cardY + cardH) {
-                        gameproject.meta.PlayerData.debugStartWave = (gameproject.meta.PlayerData.debugStartWave % 50) + 1;
+                        gameproject.meta.PlayerData.debugStartWave = (gameproject.meta.PlayerData.debugStartWave % 15) + 1;
                     }
                     if (mx >= cardX + (cardW+spacing)*3 && mx <= cardX + (cardW+spacing)*3 + cardW && my >= cardY && my <= cardY + cardH) {
                         gameproject.meta.PlayerData.debugStartLevel = (gameproject.meta.PlayerData.debugStartLevel % 100) + 1;

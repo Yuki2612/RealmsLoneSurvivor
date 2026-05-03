@@ -24,7 +24,8 @@ public class HUD {
         int playerDamage = game.upgradeManager.playerDamage;
         long actualCooldown = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus());
         float shotsPerSec = 1000.0f / actualCooldown;
-        int dps = (int) (playerDamage * game.currentWeapon.damageMultiplier * game.currentWeapon.getProjectilesPerShot() * shotsPerSec);
+        int dps = (int) (playerDamage * game.currentWeapon.damageMultiplier * game.currentWeapon.getProjectilesPerShot()
+                * shotsPerSec);
         int currentExp = game.upgradeManager.currentExp;
         int expToNextLevel = game.upgradeManager.expToNextLevel;
         int playerLevel = game.upgradeManager.playerLevel;
@@ -37,7 +38,7 @@ public class HUD {
         int goldX = 30;
         int goldY = screenHeight - 95;
         int soulX = 180;
-        int atkX = screenWidth - 350;
+        int fpsX = screenWidth - 250; // Chuyển FPS sang bên trái Minimap (150px) để không bị đè
 
         java.awt.image.BufferedImage goldImg = ImageManager.get("gold");
         java.awt.image.BufferedImage soulImg = ImageManager.get("soul");
@@ -46,6 +47,7 @@ public class HUD {
         g.setColor(Color.BLACK);
         g.drawString("Score: " + score, scoreX, 35);
         g.drawString("Wave: " + waveCount, waveX, 35);
+        g.drawString("FPS: " + game.currentFPS, fpsX, 35);
 
         if (goldImg != null) {
             g.drawImage(goldImg, goldX, goldY - 20, 24, 24, null);
@@ -61,10 +63,6 @@ public class HUD {
             g.drawString("S: " + PlayerData.soulStones, soulX, goldY);
         }
 
-        // Hiển thị FPS ở vị trí ATK cũ (Góc trên bên phải)
-        g.setFont(FontManager.getFont(20f));
-        g.drawString("FPS: " + game.currentFPS, atkX, 35);
-        
         g.drawString("HP:", 15, 112);
         g.drawString("Dash:", 15, 155);
 
@@ -72,6 +70,9 @@ public class HUD {
         g.setColor(Color.WHITE);
         g.drawString("Score: " + score, scoreX - 2, 33);
         g.drawString("Wave: " + waveCount, waveX - 2, 33);
+        g.drawString("FPS: " + game.currentFPS, fpsX - 2, 33);
+        g.drawString("HP:", 13, 110);
+        g.drawString("Dash:", 13, 153);
 
         if (goldImg != null) {
             g.drawImage(goldImg, goldX, goldY - 20, 24, 24, null);
@@ -90,11 +91,6 @@ public class HUD {
             g.setColor(Color.CYAN);
             g.drawString("S: " + PlayerData.soulStones, soulX - 2, goldY - 2);
         }
-
-        g.setColor(Color.WHITE);
-        g.drawString("FPS: " + game.currentFPS, atkX - 2, 33);
-        g.drawString("HP:", 13, 110);
-        g.drawString("Dash:", 13, 153);
 
         // Trái tim
         java.awt.image.BufferedImage heartImg = ImageManager.get("heart");
@@ -145,34 +141,48 @@ public class HUD {
         g.setColor(Color.WHITE);
         g.drawString(expText, screenWidth / 2 - 140, barY + 20);
 
-        // Boss HP bar - ĐỒNG BỘ HÓA ĐỂ TRÁNH CRASH
+        // Boss HP bar - HOÀN TRÀ PHONG CÁCH ĐƠN GIẢN (SIMPLE STYLE)
         synchronized (enemies) {
             for (Enemy e : enemies) {
                 if (e.isBoss && !e.isDying) {
-                    int bBarW = 500;
-                    int bBarH = 22;
+                    int bBarW = 600;
+                    int bBarH = 20; 
                     int bBarX = screenWidth / 2 - bBarW / 2;
-                    int bBarY = 16;
+                    int bBarY = 25;
 
-                    g.setColor(new Color(0, 0, 0, 160));
-                    g.fillRoundRect(bBarX - 4, bBarY - 4, bBarW + 8, bBarH + 8, 8, 8);
-                    g.setColor(new Color(100, 0, 0));
+                    // 1. NỀN THANH MÁU
+                    g.setColor(new Color(0, 0, 0, 180));
+                    g.fillRoundRect(bBarX - 4, bBarY - 4, bBarW + 8, bBarH + 8, 10, 10);
+                    g.setColor(new Color(80, 0, 0));
                     g.fillRoundRect(bBarX, bBarY, bBarW, bBarH, 6, 6);
+
+                    // 2. PHẦN MÁU HIỆN TẠI
                     int hpW = (int) ((float) e.getHp() / e.getMaxHp() * bBarW);
                     if (hpW > 0) {
-                        g.setColor(new Color(220, 50, 50));
+                        g.setColor(new Color(220, 40, 40));
                         g.fillRoundRect(bBarX, bBarY, hpW, bBarH, 6, 6);
+                        
+                        // Highlight đơn giản
+                        g.setColor(new Color(255, 255, 255, 40));
+                        g.fillRect(bBarX, bBarY, hpW, bBarH / 2);
                     }
-                    g.setColor(Color.WHITE);
-                    g.drawRoundRect(bBarX, bBarY, bBarW, bBarH, 6, 6);
 
-                    g.setFont(FontManager.getFont(14f));
-                    String bossLabel = "BOSS  " + Math.max(0, e.getHp()) + " / " + e.getMaxHp();
-                    int labelW = g.getFontMetrics().stringWidth(bossLabel);
+                    // 3. TÊN BOSS
+                    String bossName = e.getName();
+                    g.setFont(FontManager.getFont(22f));
+                    int nameW = g.getFontMetrics().stringWidth(bossName);
                     g.setColor(Color.BLACK);
-                    g.drawString(bossLabel, screenWidth / 2 - labelW / 2 + 1, bBarY + 16);
+                    g.drawString(bossName, screenWidth / 2 - nameW / 2 + 2, bBarY + bBarH + 26);
+                    g.setColor(new Color(255, 215, 0));
+                    g.drawString(bossName, screenWidth / 2 - nameW / 2, bBarY + bBarH + 24);
+
+                    // 4. CON SỐ HP
+                    g.setFont(FontManager.getFont(13f));
+                    String hpText = Math.max(0, e.getHp()) + " / " + e.getMaxHp();
+                    int hpTextW = g.getFontMetrics().stringWidth(hpText);
                     g.setColor(Color.WHITE);
-                    g.drawString(bossLabel, screenWidth / 2 - labelW / 2, bBarY + 15);
+                    g.drawString(hpText, screenWidth / 2 - hpTextW / 2, bBarY + bBarH - 5);
+                    
                     break;
                 }
             }
@@ -304,7 +314,7 @@ public class HUD {
                     continue;
                 int ex = mapX + (int) (e.getX() * scaleX);
                 int ey = mapY + (int) (e.getY() * scaleY);
-                
+
                 // Mimic đặc biệt (màu tím sáng)
                 if (e instanceof gameproject.entity.Mimic) {
                     g.setColor(Color.MAGENTA);
@@ -322,7 +332,8 @@ public class HUD {
         synchronized (game.entityManager.eventChests) {
             g.setColor(Color.ORANGE);
             for (gameproject.entity.EventTreasure et : game.entityManager.eventChests) {
-                if (et.opened) continue;
+                if (et.opened)
+                    continue;
                 int ex = mapX + (int) (et.x * scaleX);
                 int ey = mapY + (int) (et.y * scaleY);
                 int dotSize = isLarge ? 5 : 3;
@@ -338,16 +349,17 @@ public class HUD {
         g.fillRect(px - pSize / 2, py - pSize / 2, pSize, pSize);
 
         // 5. Darkness on Minimap
-        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS && 
-            gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
-            
+        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS &&
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+
             int miniVisionRadius = isLarge ? 90 : 30;
-            float[] fractions = {0.0f, 0.7f, 1.0f};
-            Color[] colors = {new Color(0,0,0,0), new Color(0,0,0,180), Color.BLACK};
-            
-            RadialGradientPaint rgp = new RadialGradientPaint(new java.awt.geom.Point2D.Float(px, py), miniVisionRadius, fractions, colors);
+            float[] fractions = { 0.0f, 0.7f, 1.0f };
+            Color[] colors = { new Color(0, 0, 0, 0), new Color(0, 0, 0, 180), Color.BLACK };
+
+            RadialGradientPaint rgp = new RadialGradientPaint(new java.awt.geom.Point2D.Float(px, py), miniVisionRadius,
+                    fractions, colors);
             g2d.setPaint(rgp);
-            
+
             // Lưu lại clip cũ
             java.awt.Shape oldClip = g2d.getClip();
             g2d.clipRect(mapX, mapY, mapSize, mapSize);

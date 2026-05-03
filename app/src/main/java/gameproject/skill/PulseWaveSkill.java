@@ -33,12 +33,14 @@ public class PulseWaveSkill implements PassiveSkill {
                 lastPulseY = player.getY();
                 pulseRenderUntil = currentTime + 300;
 
-                for (Enemy e : enemies) {
-                    float dist = (float) Math
-                            .sqrt(Math.pow(e.getX() - player.getX(), 2) + Math.pow(e.getY() - player.getY(), 2));
-                    if (dist <= pulseRadius) {
-                        e.takeDamage(damage, vfxManager, currentTime);
-                        e.applyKnockback(player.getX(), player.getY(), knockback);
+                synchronized (enemies) {
+                    for (Enemy e : enemies) {
+                        float dist = (float) Math
+                                .sqrt(Math.pow(e.getX() - player.getX(), 2) + Math.pow(e.getY() - player.getY(), 2));
+                        if (dist <= pulseRadius) {
+                            e.takeDamage(damage, vfxManager, currentTime);
+                            e.applyKnockback(player.getX(), player.getY(), knockback);
+                        }
                     }
                 }
             }

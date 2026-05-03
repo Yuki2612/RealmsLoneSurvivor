@@ -353,6 +353,12 @@ public class MapManager {
     }
 
     public boolean isColliding(float x, float y, float w, float h) {
+        // LỚP CHẮN TÀNG HÌNH: Chặn mọi thực thể lọt ra ngoài phạm vi 1 ô ở rìa map
+        if (x < TILE_SIZE || x + w > (cols - 1) * TILE_SIZE || 
+            y < TILE_SIZE || y + h > (rows - 1) * TILE_SIZE) {
+            return true;
+        }
+
         // Kiểm tra va chạm dựa trên Hitbox thực tế thay vì ô lưới thô
         List<Obstacle> near = getObstaclesInRadius(x + w / 2f, y + h / 2f, TILE_SIZE);
         for (Obstacle obs : near) {
@@ -361,9 +367,6 @@ public class MapManager {
                     return true;
                 }
             } else if (obs.isSolid()) {
-                // Nếu vật cản không có hitbox (ví dụ tường đơn giản), dùng ô lưới của nó
-                // Nhưng ở đây ta đã lấy được object obs, ta có thể dùng bounds của nó
-                // (Giả sử mọi vật cản đều có thể coi là AABB nếu ko có hitbox cụ thể)
                 if (x < obs.x + obs.width && x + w > obs.x && y < obs.y + obs.height && y + h > obs.y) {
                     return true;
                 }
@@ -388,6 +391,12 @@ public class MapManager {
     }
 
     public boolean isSolid(int worldX, int worldY) {
+        // LỚP CHẮN TÀNG HÌNH: Biên 1 ô lưới
+        if (worldX < TILE_SIZE || worldX > (cols - 1) * TILE_SIZE || 
+            worldY < TILE_SIZE || worldY > (rows - 1) * TILE_SIZE) {
+            return true;
+        }
+
         // CHỐNG "LỖI TÁN LÁ" VÀ "LỖI LỆCH GỐC": Quét các vật thể lân cận
         List<Obstacle> near = getObstaclesInRadius(worldX, worldY, TILE_SIZE);
         for (Obstacle obs : near) {

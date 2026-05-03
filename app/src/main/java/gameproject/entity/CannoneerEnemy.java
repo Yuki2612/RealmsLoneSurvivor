@@ -48,7 +48,7 @@ public class CannoneerEnemy extends Enemy {
                 this.tier = 5;
             }
         }
-        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.05f));
+        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.08f));
         this.hp = this.maxHp;
         this.currentCooldown = rand.nextInt(120) + 60;
     }

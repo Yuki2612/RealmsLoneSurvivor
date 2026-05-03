@@ -16,14 +16,28 @@ public class PauseState implements State {
         if (game.input.mouseClicked) {
             int mx = game.input.mouseX;
             int my = game.input.mouseY;
-            int btnX = game.screenWidth / 2 - 120;
-            if (mx >= btnX && mx <= btnX + 240) {
-                if (my >= game.screenHeight / 2 - 50 && my <= game.screenHeight / 2 + 10)
+            
+            int cx = game.screenWidth / 2;
+            int cy = game.screenHeight / 2;
+            int btnW = 320;
+            int btnH = 65;
+            int btnX = cx - btnW / 2;
+            int startY = cy - 60;
+            int spacing = 25;
+
+            // Check horizontal range for all buttons
+            if (mx >= btnX && mx <= btnX + btnW) {
+                // 1. RESUME
+                if (my >= startY && my <= startY + btnH) {
                     game.changeState(new PlayingState());
-                else if (my >= game.screenHeight / 2 + 30 && my <= game.screenHeight / 2 + 90) {
+                }
+                // 2. MAIN MENU
+                else if (my >= startY + (btnH + spacing) && my <= startY + (btnH + spacing) + btnH) {
                     gameproject.meta.PlayerData.save();
                     game.changeState(new MenuState());
-                } else if (my >= game.screenHeight / 2 + 110 && my <= game.screenHeight / 2 + 170) {
+                }
+                // 3. EXIT GAME
+                else if (my >= startY + (btnH + spacing) * 2 && my <= startY + (btnH + spacing) * 2 + btnH) {
                     gameproject.meta.PlayerData.save();
                     System.exit(0);
                 }

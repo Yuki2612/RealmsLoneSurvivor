@@ -62,6 +62,10 @@ public class CharacterSelectUI {
 
         // Image Holder
         BufferedImage charImg = ImageManager.get("player" + (selectedIndex + 1));
+        if (charImg == null) {
+            charImg = ImageManager.get("player1");
+        }
+        
         if (charImg != null) {
             g2d.drawImage(charImg, centerX + 40, centerY + 100, centerW - 80, centerH - 160, null);
         } else {

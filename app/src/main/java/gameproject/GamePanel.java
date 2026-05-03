@@ -19,6 +19,7 @@ import gameproject.state.SettingsState;
 import gameproject.state.GuideState;
 import gameproject.state.SkillsState;
 import gameproject.state.StatsState;
+import gameproject.state.VictoryState;
 import gameproject.meta.PlayerData;
 import gameproject.meta.CharacterClass;
 import gameproject.environment.MapManager;
@@ -141,6 +142,8 @@ public class GamePanel extends JPanel implements Runnable {
                 break;
         }
 
+        ImageManager.load("skill_explosive", "app/res/skill_explosive.png");
+        ImageManager.load("skill_explosive_bullets", "app/res/skill_explosive.png");
         ImageManager.load("player", "app/res/player.png");
         for (int i = 1; i <= 5; i++) {
             ImageManager.load("player" + i, "app/res/player" + i + ".png");
@@ -156,9 +159,15 @@ public class GamePanel extends JPanel implements Runnable {
             ImageManager.loadAnimation(prefix + "_idle_up", "app/res/" + prefix + "_idle_up.png", 10);
             ImageManager.loadAnimation(prefix + "_run_up", "app/res/" + prefix + "_run_up.png", 12);
         }
-        ImageManager.load("boss1", "app/res/boss1.png");
-        ImageManager.load("boss2", "app/res/boss2.png");
-        ImageManager.load("boss3", "app/res/boss3.png");
+        for (int i = 1; i <= 3; i++) {
+            String bKey = "boss" + i;
+            ImageManager.load(bKey, "app/res/" + bKey + ".png");
+            // Tự động thử nạp các bộ animation nếu tồn tại (Smart Search sẽ lo phần _f8)
+            ImageManager.loadAnimation(bKey + "_idle", "app/res/" + bKey + "_idle.png");
+            ImageManager.loadAnimation(bKey + "_attack", "app/res/" + bKey + "_attack.png");
+            ImageManager.loadAnimation(bKey + "_dash", "app/res/" + bKey + "_dash.png");
+            ImageManager.loadAnimation(bKey + "_death", "app/res/" + bKey + "_death.png");
+        }
         ImageManager.load("chest1", "app/res/chest1.png");
         ImageManager.load("chest2", "app/res/chest2.png");
         ImageManager.load("gold", "app/res/gold.png");
@@ -171,6 +180,7 @@ public class GamePanel extends JPanel implements Runnable {
         ImageManager.load("floor", "app/res/floor.png");
         ImageManager.load("treasure", "app/res/treasure.png");
         ImageManager.load("mimic", "app/res/mimic.png");
+        ImageManager.load("boss_hud", "app/res/boss_hud.png");
 
         // Load Skill Icons
         for (gameproject.skill.Upgrade u : gameproject.skill.Upgrade.values()) {
@@ -267,6 +277,11 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         changeState(new gameproject.state.PlayingState());
+    }
+
+    public void triggerVictory() {
+        PlayerData.save();
+        changeState(new VictoryState(score, entityManager.waveCount, surviveTimeSeconds, currentWeapon.name, player, activeSkills));
     }
 
     public void triggerGameOver() {

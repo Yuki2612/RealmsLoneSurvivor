@@ -22,6 +22,11 @@ public class EntityManager {
     public ArrayList<ResourceDrop> resourceDrops = new ArrayList<>();
     public ArrayList<EventTreasure> eventChests = new ArrayList<>();
     public int bossesKilled = 0;
+    public static final int FINAL_WAVE = 15; // Giới hạn Wave để kết thúc game (The King)
+
+    public ArrayList<Enemy> getEnemies() {
+        return enemies;
+    }
 
     private long lastEnemySpawnTime;
     public int waveCount = 0;
@@ -57,30 +62,35 @@ public class EntityManager {
         activeBossCount = bCount;
 
         // 1. SINH QUÁI VÀ BOSS
-        if (enemies.isEmpty() || currentTime - lastEnemySpawnTime >= currentSpawnInterval) {
+        if ((enemies.isEmpty() || currentTime - lastEnemySpawnTime >= currentSpawnInterval) && waveCount < FINAL_WAVE) {
             waveCount++;
             int waveSize = 2 + waveCount;
             if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
-                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
-                waveSize = (int)(waveSize * 1.5f);
+                    gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+                waveSize = (int) (waveSize * 1.5f);
             }
             for (int i = 0; i < waveSize; i++) {
-                enemies.add(spawnSafeEnemy(player, panel, surviveTimeSeconds));
+                Enemy newEnemy = spawnSafeEnemy(player, panel, surviveTimeSeconds);
+                synchronized (enemies) {
+                    enemies.add(newEnemy);
+                }
             }
 
             if (waveCount % 5 == 0) {
                 int bType = (waveCount / 5) % 3;
-                if (bType == 0) bType = 3;
+                if (bType == 0)
+                    bType = 3;
 
                 // Tìm vị trí an toàn cho Boss (Né vật cản và nằm trong map)
                 float bossStartX = panel.cameraX + screenWidth / 2f;
                 float bossStartY = panel.cameraY - 100f;
-                
+
                 for (int attempt = 0; attempt < 15; attempt++) {
-                    float testX = panel.cameraX + (float)(Math.random() * screenWidth);
+                    float testX = panel.cameraX + (float) (Math.random() * screenWidth);
                     float testY = panel.cameraY - 150f; // Boss tới từ phía trên
-                    if (Math.random() < 0.5) testY = panel.cameraY + screenHeight + 150f; // Hoặc từ phía dưới
-                    
+                    if (Math.random() < 0.5)
+                        testY = panel.cameraY + screenHeight + 150f; // Hoặc từ phía dưới
+
                     testX = Math.max(0, Math.min(testX, GamePanel.WORLD_WIDTH - 100));
                     testY = Math.max(0, Math.min(testY, GamePanel.WORLD_HEIGHT - 100));
 
@@ -91,12 +101,14 @@ public class EntityManager {
                     }
                 }
 
-                if (bType == 1)
-                    enemies.add(new ChargerBoss(bossStartX, bossStartY, surviveTimeSeconds));
-                else if (bType == 2)
-                    enemies.add(new TeleporterBoss(bossStartX, bossStartY, surviveTimeSeconds));
-                else
-                    enemies.add(new TankBoss(bossStartX, bossStartY, surviveTimeSeconds));
+                synchronized (enemies) {
+                    if (bType == 1)
+                        enemies.add(new SoulReaper(bossStartX, bossStartY, surviveTimeSeconds));
+                    else if (bType == 2)
+                        enemies.add(new ShadowBoss(bossStartX, bossStartY, surviveTimeSeconds));
+                    else
+                        enemies.add(new KingBoss(bossStartX, bossStartY, surviveTimeSeconds));
+                }
 
                 vfxManager.showWaveBanner("⚠  BOSS INCOMING!", new java.awt.Color(255, 80, 80), currentTime);
             } else {
@@ -106,7 +118,7 @@ public class EntityManager {
             lastEnemySpawnTime = currentTime;
             long interval = Math.min(10000 + ((waveCount - 1) * 5000), 25000);
             if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
-                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+                    gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
                 interval /= 1.5;
             }
             currentSpawnInterval = interval;
@@ -164,7 +176,8 @@ public class EntityManager {
 
                 // Phân luồng: Đạn địch bắn vào Player
                 if (p.isEnemyBullet) {
-                    if (!player.isDashing() && !player.isInvulnerable() && p.getBounds().intersects(player.getBounds())) {
+                    if (!player.isDashing() && !player.isInvulnerable()
+                            && p.getBounds().intersects(player.getBounds())) {
                         if (p.isExplosive) {
                             handleExplosiveEnemyBullet(p, player, vfxManager, currentTime, panel);
                         } else {
@@ -217,9 +230,13 @@ public class EntityManager {
 
                             synchronized (enemies) {
                                 for (Enemy e : enemies) {
-                                    if (!e.isDead() && distanceToLineSegment(e.getX() + e.size / 2, e.getY() + e.size / 2,
-                                            p.startX, p.startY, currentEndX, currentEndY) <= 40) {
+                                    if (!e.isDead()
+                                            && distanceToLineSegment(e.getX() + e.size / 2, e.getY() + e.size / 2,
+                                                    p.startX, p.startY, currentEndX, currentEndY) <= 40) {
                                         e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                    for (PassiveSkill skill : activeSkills) {
+                                        skill.onProjectileHit(p, e, player, vfxManager, currentTime);
+                                    }
                                     }
                                 }
                             }
@@ -231,6 +248,9 @@ public class EntityManager {
                             for (Enemy e : enemies) {
                                 if (e != p.ignoredEnemy && p.getBounds().intersects(e.getBounds())) {
                                     e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                    for (PassiveSkill skill : activeSkills) {
+                                        skill.onProjectileHit(p, e, player, vfxManager, currentTime);
+                                    }
                                     if (p.isShocking) {
                                         e.applyShock(1000, vfxManager, enemies);
                                     }
@@ -241,7 +261,8 @@ public class EntityManager {
                                                 .getOrDefault(gameproject.skill.Upgrade.CHAIN_LIGHTNING, 0) * 0.05f);
                                         // Chain Lightning Range (Lv1: 250px Lv5: 650px)
                                         float maxRange = (150.0f
-                                                + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
+                                                + (player
+                                                        .getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
                                                         * 100))
                                                 * soulMulti;
                                         Enemy closest = getClosestEnemy(e, enemies, maxRange);
@@ -252,7 +273,8 @@ public class EntityManager {
                                             bounceProj.isShocking = true;
                                             bounceProj.damage = (int) ((Math.max(1, p.damage / 5)
                                                     // Lv1: +4 Lv5: +20
-                                                    + (player.getBreakthroughLevel(gameproject.skill.Upgrade.CHAIN_LIGHTNING)
+                                                    + (player.getBreakthroughLevel(
+                                                            gameproject.skill.Upgrade.CHAIN_LIGHTNING)
                                                             * 4))
                                                     * soulMulti);
                                             bounceProj.bouncesLeft = p.bouncesLeft - 1;
@@ -272,7 +294,9 @@ public class EntityManager {
                     pIt.remove();
             }
         }
-        projectiles.addAll(pendingProjectiles);
+        synchronized (projectiles) {
+            projectiles.addAll(pendingProjectiles);
+        }
 
         // 4. XỬ LÝ QUÁI VẬT DI CHUYỂN, BẮN ĐẠN VÀ VA CHẠM
         float speedMultiplier = 1.0f + (surviveTimeSeconds / 60) * 0.12f;
@@ -281,6 +305,74 @@ public class EntityManager {
             for (Enemy enemy : new ArrayList<>(enemies)) {
 
                 if (enemy.isDying) {
+                    // 1. RƠI ĐỒ NGAY LẬP TỨC KHI VỪA CHẾT (Không đợi fade xong)
+                    if (!enemy.rewardDropped) {
+                        enemy.rewardDropped = true;
+
+                        if (enemy.isBoss) {
+                            boolean isRare = (bossesKilled == 0);
+                            bossesKilled++;
+                            synchronized (weaponChests) {
+                                weaponChests
+                                        .add(new ChestDrop(enemy.getX(), enemy.getY(), isRare, currentTime + 300000));
+                            }
+                            // Rơi tài nguyên Boss
+                            int goldAmount = 100 + (waveCount / 5) * 50;
+                            int soulAmount = 5 + (waveCount / 5) * 3;
+                            synchronized (resourceDrops) {
+                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, goldAmount,
+                                        currentTime, 45000);
+                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.SOUL, soulAmount,
+                                        currentTime, 60000);
+                            }
+                            // Rơi tim Boss
+                            synchronized (heartDrops) {
+                                heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 20000));
+                                heartDrops.add(new HeartDrop(enemy.getX() + 30, enemy.getY(), currentTime + 20000));
+                            }
+                        } else {
+                            // Rơi tài nguyên quái thường
+                            float dropChance = 0.25f;
+                            int goldBase = 1 + (int) (Math.random() * 2);
+                            int lootMult = 1;
+                            if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON
+                                    &&
+                                    gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+                                dropChance = 0.5f;
+                                lootMult = 2;
+                            }
+                            if (Math.random() < dropChance) {
+                                synchronized (resourceDrops) {
+                                    spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD,
+                                            goldBase * lootMult, currentTime, 20000);
+                                    if (Math.random() < 0.1)
+                                        spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.SOUL, 1,
+                                                currentTime, 30000);
+                                }
+                            }
+                            // Tỉ lệ rơi tim quái thường
+                            if (Math.random() < 0.005) {
+                                synchronized (heartDrops) {
+                                    heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 10000));
+                                }
+                            }
+                        }
+
+                        if (enemy.triggerCorrosiveMelt) {
+                            vfxManager.addAcidZone(enemy.getX(), enemy.getY(), 80, currentTime);
+                        }
+
+                        // Trigger skills on death
+                        for (PassiveSkill skill : activeSkills) {
+                            skill.onEnemyDeath(enemy, player, enemies, vfxManager, currentTime);
+                        }
+                        player.getComboManager().onEnemyKilled(enemy.isBoss);
+                    }
+
+                    // 2. CẬP NHẬT HOẠT ẢNH CHẾT (Đối với Boss có death animation)
+                    enemy.update(player.getX(), player.getY(), speedMultiplier, enemies, screenWidth, screenHeight, panel);
+
+                    // 3. XÓA KHỎI DANH SÁCH KHI HẾT ANIMATION
                     if (enemy.shouldRemove()) {
                         panel.addScoreAndExp(enemy.getMaxHp());
                         SoundManager.play("hit");
@@ -288,65 +380,25 @@ public class EntityManager {
                                 enemy.getY() + enemy.size / 2f, currentTime,
                                 enemy.isBoss ? new java.awt.Color(255, 80, 80) : enemy.color);
 
-                        if (enemy.isBoss) {
-                            bossesKilled++;
-                            boolean isRare = (bossesKilled == 1);
-                            weaponChests.add(new ChestDrop(enemy.getX(), enemy.getY(), isRare, currentTime + 300000));
+                        synchronized (enemies) {
+                            enemies.remove(enemy);
                         }
-                        if (enemy.isBoss) {
-                            int goldAmount = 100 + (waveCount / 5) * 50;
-                            int soulAmount = 1 + (waveCount / 5) * 2;
-                            synchronized (resourceDrops) {
-                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, goldAmount,
-                                        currentTime,
-                                        45000);
-                                spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.SOUL, soulAmount,
-                                        currentTime,
-                                        60000);
-                            }
-                        } else {
-                            float dropChance = 0.25f;
-                            int lootMult = 1;
-                            if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
-                                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
-                                dropChance = 0.45f;
-                                lootMult = 2;
-                            }
-
-                            if (Math.random() < dropChance) {
-                                synchronized (resourceDrops) {
-                                    spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, 1 * lootMult, currentTime,
-                                            20000);
-                                }
-                            }
-                        }
-                        if (enemy.triggerCorrosiveMelt) {
-                            vfxManager.addAcidZone(enemy.getX(), enemy.getY(), 80, currentTime);
-                        }
-                        synchronized (heartDrops) {
-                            if (!enemy.isBoss && Math.random() < 0.01) {
-                                heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 10000));
-                            } else if (enemy.isBoss) {
-                                heartDrops.add(new HeartDrop(enemy.getX(), enemy.getY(), currentTime + 20000));
-                                heartDrops.add(new HeartDrop(enemy.getX() + 30, enemy.getY(), currentTime + 20000));
-                            }
-                        }
-                        for (PassiveSkill skill : activeSkills) {
-                            skill.onEnemyDeath(enemy, player, enemies, vfxManager, currentTime);
-                        }
-                        player.getComboManager().onEnemyKilled(enemy.isBoss);
-
-                        enemies.remove(enemy);
                     }
-                    continue;
+                    continue; // Không cho quái đang chết di chuyển vật lý hay nhận thêm damage
                 }
+
+                // KHÔI PHỤC TÍNH TOÁN KHOẢNG CÁCH
+                float dx = (player.getX() + player.SIZE / 2f) - (enemy.getX() + enemy.size / 2f);
+                float dy = (player.getY() + player.SIZE / 2f) - (enemy.getY() + enemy.size / 2f);
+                float distSq = dx * dx + dy * dy;
 
                 float currentEnemySpeedMulti = speedMultiplier;
                 if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
-                    gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE && !enemy.isBoss) {
+                        gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE
+                        && !enemy.isBoss) {
                     currentEnemySpeedMulti *= 1.25f;
                 }
-                
+
                 if (enemy.chillEndTime > currentTime)
                     currentEnemySpeedMulti *= 0.7f;
                 if (enemy.inAcidZone)
@@ -371,11 +423,8 @@ public class EntityManager {
                     newEnemies.addAll(summoned);
                 }
 
-                // Ý TƯỞNG A: Tăng tầm với tấn công (Attack Reach) để khắc phục lỗi nấp sau vật thể
-                float dx = (player.getX() + player.SIZE / 2f) - (enemy.getX() + enemy.size / 2f);
-                float dy = (player.getY() + player.SIZE / 2f) - (enemy.getY() + enemy.size / 2f);
-                float distSq = dx * dx + dy * dy;
-                float attackReach = (enemy.size + player.SIZE) * 0.8f; // Cân bằng lại tầm đánh sau khi đã tối ưu hitbox vật cản
+                // TĂNG TẦM VỚI TẤN CÔNG (Attack Reach)
+                float attackReach = (enemy.size + player.SIZE) * 0.95f;
 
                 if (!player.isDashing() && !player.isInvulnerable() && distSq < attackReach * attackReach
                         && !enemy.isDying) {
@@ -477,6 +526,11 @@ public class EntityManager {
                 }
             }
         }
+
+        // KIỂM TRA CHIẾN THẮNG: Dọn sạch toàn bộ quái sau Wave cuối
+        if (waveCount >= FINAL_WAVE && enemies.isEmpty()) {
+            panel.triggerVictory();
+        }
     }
 
     // HÀM HỖ TRỢ: Xử lý đạn nổ của Pháo thủ
@@ -573,7 +627,8 @@ public class EntityManager {
         synchronized (weaponChests) {
             for (ChestDrop c : weaponChests) {
                 long remaining = c.expirationTime - GamePanel.getTickTime();
-                if (remaining < 3000 && (remaining / 150) % 2 == 0) continue;
+                if (remaining < 3000 && (remaining / 150) % 2 == 0)
+                    continue;
 
                 int dx = (int) Math.round(c.x);
                 int dy = (int) Math.round(c.y);
@@ -598,8 +653,9 @@ public class EntityManager {
         synchronized (heartDrops) {
             for (HeartDrop hd : heartDrops) {
                 long remaining = hd.expireTime - GamePanel.getTickTime();
-                if (remaining < 3000 && (remaining / 150) % 2 == 0) continue;
-                
+                if (remaining < 3000 && (remaining / 150) % 2 == 0)
+                    continue;
+
                 int hdx = (int) Math.round(hd.x);
                 int hdy = (int) Math.round(hd.y);
                 java.awt.image.BufferedImage heartImg = gameproject.ImageManager.get("heart");

@@ -42,7 +42,7 @@ public class LevelUpState implements State {
                     // Tiến hóa vũ khí – kế thừa tỉ lệ cooldown & range từ vũ khí cũ
                     Weapon old = game.currentWeapon;
                     if (old instanceof gameproject.weapon.Shotgun &&
-                        game.player.getBreakthroughLevel(gameproject.skill.Upgrade.EXPLOSIVE_CORPSE) > 0 &&
+                        game.player.getBreakthroughLevel(gameproject.skill.Upgrade.EXPLOSIVE_BULLETS) > 0 &&
                         game.player.getUpgradeLevel(gameproject.skill.Upgrade.DAMAGE) >= 3) {
                         game.currentWeapon = transferStats(old, new gameproject.weapon.HellfireBoomstick());
                     } else if (old instanceof gameproject.weapon.AssaultRifle &&

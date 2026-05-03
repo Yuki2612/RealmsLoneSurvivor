@@ -7,16 +7,19 @@ import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.awt.event.KeyEvent;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.ArrayList;
 import gameproject.skill.Upgrade;
 import gameproject.meta.CharacterClass;
 import gameproject.meta.PlayerData;
+import gameproject.environment.MapManager;
 
 public class Player implements Renderable {
     private float x, y;
     public static final int SIZE = 25;
+    private CharacterClass charClass;
 
     @Override
     public void render(Graphics2D g) {
@@ -35,7 +38,7 @@ public class Player implements Renderable {
     private final int MAX_HEARTS = 15;
     private long invulnerableUntil = 0;
 
-    private Map<Upgrade, Integer> upgradeLevels = new HashMap<>();
+    private Map<Upgrade, Integer> upgradeLevels = new ConcurrentHashMap<>();
 
     private boolean up, down, left, right;
     private float lastDirX = 1, lastDirY = 0;
@@ -60,6 +63,10 @@ public class Player implements Renderable {
     // Combo System integration
     private ComboManager comboManager;
 
+    // Slow system
+    private float slowMultiplier = 1.0f;
+    private long slowEndTime = 0;
+
     public Player(float startX, float startY, CharacterClass charClass) {
         this.x = startX;
         this.y = startY;
@@ -68,6 +75,7 @@ public class Player implements Renderable {
         this.hearts = charClass.baseHp + (PlayerData.statHealthLevel / 10);
         this.speed = (5.0f * charClass.speedMulti) * (1.0f + PlayerData.statSpeedLevel * 0.02f);
         this.comboManager = new ComboManager();
+        this.charClass = charClass;
 
         initAnimations(charClass);
     }
@@ -140,12 +148,18 @@ public class Player implements Renderable {
             }
         } else {
             float currentDirX = 0, currentDirY = 0;
-            float currentSpeed = speed * (1.0f + comboManager.getMoveSpeedBonus());
+            
+            // Tính toán tốc độ hiện tại (Speed * Combo Bonus * Slow Multiplier)
+            float effectiveSlow = 1.0f;
+            if (gameproject.GamePanel.getTickTime() < slowEndTime) {
+                effectiveSlow = slowMultiplier;
+            }
+            float currentSpeed = speed * (1.0f + comboManager.getMoveSpeedBonus()) * effectiveSlow;
             
             int footW = 16;
             int footH = 10;
 
-            if (up && y > 0) {
+            if (up && y > MapManager.TILE_SIZE) {
                 float nextY = y - currentSpeed;
                 float fx = x + (SIZE - footW) / 2f;
                 float fy = nextY + SIZE - footH;
@@ -156,7 +170,7 @@ public class Player implements Renderable {
                     nextDir = "up";
                 }
             }
-            if (down && y < GamePanel.WORLD_HEIGHT - SIZE) {
+            if (down && y < GamePanel.WORLD_HEIGHT - SIZE - MapManager.TILE_SIZE) {
                 float nextY = y + currentSpeed;
                 float fx = x + (SIZE - footW) / 2f;
                 float fy = nextY + SIZE - footH;
@@ -167,7 +181,7 @@ public class Player implements Renderable {
                     nextDir = "down";
                 }
             }
-            if (left && x > 0) {
+            if (left && x > MapManager.TILE_SIZE) {
                 float nextX = x - currentSpeed;
                 float fx = nextX + (SIZE - footW) / 2f;
                 float fy = y + SIZE - footH;
@@ -179,7 +193,7 @@ public class Player implements Renderable {
                     facingRight = false;
                 }
             }
-            if (right && x < GamePanel.WORLD_WIDTH - SIZE) {
+            if (right && x < GamePanel.WORLD_WIDTH - SIZE - MapManager.TILE_SIZE) {
                 float nextX = x + currentSpeed;
                 float fx = nextX + (SIZE - footW) / 2f;
                 float fy = y + SIZE - footH;
@@ -299,9 +313,18 @@ public class Player implements Renderable {
         return speed;
     }
 
+    public boolean hasShield = false;
     public boolean takeHit() {
         if (isInvulnerable())
             return false;
+            
+        if (hasShield) {
+            hasShield = false;
+            addInvulnerability(1000); // 1s grace period
+            gameproject.SoundManager.play("shield");
+            return false;
+        }
+        
         hearts--;
         
         // Phát âm thanh bị thương ngẫu nhiên (1-3)
@@ -310,6 +333,19 @@ public class Player implements Renderable {
 
         invulnerableUntil = gameproject.GamePanel.getTickTime() + 1000;
         return hearts <= 0;
+    }
+
+    public boolean takeDamage(int amount) {
+        // Boss hoặc môi trường gây sát thương trực tiếp
+        if (isInvulnerable()) return false;
+        
+        // Hiện tại mỗi lần dính chiêu Boss trừ 1 tim (theo yêu cầu mới)
+        return takeHit(); 
+    }
+
+    public void applySlow(float multiplier, long duration) {
+        this.slowMultiplier = multiplier;
+        this.slowEndTime = gameproject.GamePanel.getTickTime() + duration;
     }
 
     public void levelUpUpgrade(Upgrade u) {
@@ -332,9 +368,11 @@ public class Player implements Renderable {
 
     public List<Upgrade> getOwnedBreakthroughs() {
         List<Upgrade> list = new ArrayList<>();
-        for (Upgrade u : upgradeLevels.keySet()) {
-            if (u.isBreakthrough)
-                list.add(u);
+        synchronized (upgradeLevels) {
+            for (Upgrade u : upgradeLevels.keySet()) {
+                if (u.isBreakthrough)
+                    list.add(u);
+            }
         }
         return list;
     }
@@ -376,5 +414,9 @@ public class Player implements Renderable {
 
     public ComboManager getComboManager() {
         return comboManager;
+    }
+
+    public CharacterClass getCharClass() {
+        return charClass;
     }
 }

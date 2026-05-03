@@ -127,7 +127,7 @@ public class FlowField {
         float cx = subCol * NODE_SIZE + NODE_SIZE / 2.0f;
         float cy = subRow * NODE_SIZE + NODE_SIZE / 2.0f;
         // Dùng thuật toán Broad-phase O(1) để lấy danh sách Hitbox gần đó
-        List<Obstacle> near = map.getObstaclesInRadius(cx, cy, NODE_SIZE);
+        List<Obstacle> near = map.getObstaclesInRadius(cx, cy, MapManager.TILE_SIZE);
         for (Obstacle obs : near) {
             if (obs.getHitbox() != null && obs.getHitbox().contains(cx, cy)) {
                 return true; // Chính xác tới từng pixel!

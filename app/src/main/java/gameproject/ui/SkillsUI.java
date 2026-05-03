@@ -227,7 +227,7 @@ public class SkillsUI {
             case METEOR_STRIKE: skillColor = Color.RED; break;
             case PULSE_WAVE: skillColor = Color.MAGENTA; break;
             case POISON_CLOUD: skillColor = Color.GREEN; break;
-            case EXPLOSIVE_CORPSE: skillColor = new Color(150, 0, 0); break;
+            case EXPLOSIVE_BULLETS: skillColor = new Color(200, 50, 0); break;
         }
         
         g2d.setColor(skillColor);

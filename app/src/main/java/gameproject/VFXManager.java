@@ -87,6 +87,20 @@ public class VFXManager {
         }
     }
 
+    public static class StonePillar {
+        public float x, y;
+        public long startTime;
+        public long expireTime;
+        public int width = 40;
+        public int maxHeight = 80;
+        
+        public StonePillar(float x, float y, long currentTime) {
+            this.x = x; this.y = y;
+            this.startTime = currentTime;
+            this.expireTime = currentTime + 1200; // Tồn tại 1.2s
+        }
+    }
+
     // ── State variables ────────────────────────────────────────────
     public ArrayList<FireZone>       fireZones      = new ArrayList<>();
     public ArrayList<DamageText>     damageTexts    = new ArrayList<>();
@@ -94,6 +108,7 @@ public class VFXManager {
     public ArrayList<Particle>       particles      = new ArrayList<>();
     public ArrayList<DashAfterimage> afterimages    = new ArrayList<>();
     private ArrayList<WaveBanner>    waveBanners    = new ArrayList<>();
+    public ArrayList<StonePillar>    stonePillars   = new ArrayList<>();
     
     public void clearAll() {
         synchronized(fireZones) { fireZones.clear(); }
@@ -102,7 +117,10 @@ public class VFXManager {
         synchronized(particles) { particles.clear(); }
         synchronized(afterimages) { afterimages.clear(); }
         synchronized(waveBanners) { waveBanners.clear(); }
+        synchronized(stonePillars) { stonePillars.clear(); }
         shakeTimer = 0;
+        isNightmareActive = false;
+        nightmareAlpha = 0;
     }
 
     public boolean showDamageText = true;
@@ -118,6 +136,9 @@ public class VFXManager {
     
     private java.awt.image.BufferedImage darknessVignette = null;
 
+    public boolean isNightmareActive = false;
+    public float nightmareAlpha = 0f;
+
     // ── Public API ─────────────────────────────────────────────────
 
     public void triggerScreenShake(int durationFrames) { this.shakeTimer = durationFrames; }
@@ -130,7 +151,12 @@ public class VFXManager {
         synchronized (fireZones) {
             fireZones.add(new FireZone(x - radius / 2, y - radius / 2, currentTime + 200, true, false, (int) radius));
         }
-        spawnParticleBurst(x, y, 12, currentTime, new Color(255, 100, 0), new Color(255, 220, 50), 5, 8, 500);
+        // Nâng cấp Particle: Số lượng và tốc độ tỉ lệ thuận với bán kính
+        int count = (radius > 300) ? 45 : (radius > 150 ? 30 : 15);
+        float maxSpeed = (radius / 40f); // Tỉ lệ tốc độ dựa trên bán kính
+        int pSize = (radius > 300) ? 8 : 5;
+        
+        spawnParticleBurst(x, y, count, currentTime, new Color(255, 100, 0), new Color(255, 220, 50), pSize, pSize + 4, 600, maxSpeed);
     }
 
     public void addFireTrail(float x, float y, long currentTime) {
@@ -178,16 +204,29 @@ public class VFXManager {
     }
 
     public void spawnDeathParticles(float x, float y, long currentTime, Color baseColor) {
-        spawnParticleBurst(x, y, 8, currentTime, baseColor, Color.WHITE, 2, 4, 200);
+        spawnParticleBurst(x, y, 8, currentTime, baseColor, Color.WHITE, 2, 4, 200, 4.0f);
     }
 
     public void addDashAfterimage(float playerX, float playerY, long currentTime) {
-        afterimages.add(new DashAfterimage(playerX, playerY, currentTime));
+        synchronized (afterimages) {
+            afterimages.add(new DashAfterimage(playerX, playerY, currentTime));
+        }
     }
 
     public void showWaveBanner(String text, Color color, long currentTime) {
-        waveBanners.clear();
-        waveBanners.add(new WaveBanner(text, color, currentTime));
+        synchronized (waveBanners) {
+            waveBanners.clear();
+            waveBanners.add(new WaveBanner(text, color, currentTime));
+        }
+    }
+
+    public void spawnStonePillar(float x, float y, long currentTime) {
+        synchronized (stonePillars) {
+            stonePillars.add(new StonePillar(x, y, currentTime));
+        }
+        // Thêm chút bụi đất khi cột đá mọc lên
+        spawnParticleBurst(x, y, 8, currentTime, new Color(100, 80, 60), new Color(150, 130, 110), 3, 6, 400, 3.5f);
+        triggerScreenShake(5);
     }
 
     public void spawnComboSparkles(float cx, float cy, long currentTime, Color color, int tier) {
@@ -204,20 +243,24 @@ public class VFXManager {
                 pColor = new Color(200, 240, 255, 180);
                 sz = 2; life = 800;
             }
-            particles.add(new Particle(cx, cy, vx, vy, currentTime, pColor, sz, life));
+            synchronized (particles) {
+                particles.add(new Particle(cx, cy, vx, vy, currentTime, pColor, sz, life));
+            }
         }
     }
 
     private void spawnParticleBurst(float cx, float cy, int count, long currentTime,
-                                    Color color1, Color color2, int minSize, int maxSize, int lifespanMs) {
+                                    Color color1, Color color2, int minSize, int maxSize, int lifespanMs, float maxSpeed) {
         for (int i = 0; i < count; i++) {
             double angle = Math.random() * 2 * Math.PI;
-            float speed = 1.5f + (float) (Math.random() * 4.0f);
+            float speed = 1.0f + (float) (Math.random() * maxSpeed);
             float vx = (float) Math.cos(angle) * speed;
             float vy = (float) Math.sin(angle) * speed;
             Color c = Math.random() < 0.5 ? color1 : color2;
             int sz = minSize + (int) (Math.random() * (maxSize - minSize));
-            particles.add(new Particle(cx, cy, vx, vy, currentTime, c, sz, lifespanMs));
+            synchronized (particles) {
+                particles.add(new Particle(cx, cy, vx, vy, currentTime, c, sz, lifespanMs));
+            }
         }
     }
 
@@ -226,6 +269,15 @@ public class VFXManager {
         synchronized (lasers) { lasers.removeIf(l -> currentTime > l.expireTime); }
         synchronized (afterimages) { afterimages.removeIf(a -> currentTime > a.expireTime); }
         synchronized (waveBanners) { waveBanners.removeIf(b -> currentTime > b.expireTime); }
+        synchronized (stonePillars) {
+            stonePillars.removeIf(p -> currentTime > p.expireTime);
+        }
+
+        if (isNightmareActive) {
+            nightmareAlpha = Math.min(1.0f, nightmareAlpha + 0.05f);
+        } else {
+            nightmareAlpha = Math.max(0.0f, nightmareAlpha - 0.02f);
+        }
 
         synchronized (damageTexts) {
             Iterator<DamageText> dIt = damageTexts.iterator();
@@ -323,6 +375,42 @@ public class VFXManager {
                 }
             }
         }
+
+        // 6. Stone Pillars
+        synchronized (stonePillars) {
+            for (StonePillar p : stonePillars) {
+                long now = GamePanel.getTickTime();
+                long elapsed = now - p.startTime;
+                long total = p.expireTime - p.startTime;
+                float progress = Math.min(1.0f, (float)elapsed / total);
+                
+                // Animation mọc lên và thụt xuống
+                float heightFactor = 1.0f;
+                if (progress < 0.2f) heightFactor = progress / 0.2f; // Rising
+                else if (progress > 0.8f) heightFactor = (1.0f - progress) / 0.2f; // Falling
+                
+                int h = (int)(p.maxHeight * heightFactor);
+                int px = (int)p.x - p.width/2;
+                int py = (int)p.y - h;
+                
+                // Vẽ cột đá bằng các khối Pixel
+                g2d.setColor(new Color(80, 80, 80));
+                g2d.fillRect(px, py, p.width, h);
+                
+                // Highlight và chi tiết đá
+                g2d.setColor(new Color(120, 120, 120));
+                g2d.fillRect(px, py, p.width / 4, h); // Cạnh trái
+                g2d.setColor(new Color(60, 60, 60));
+                g2d.fillRect(px + p.width - 5, py, 5, h); // Bóng phải
+                
+                // Các vết nứt Pixel
+                if (h > 20) {
+                    g2d.setColor(Color.BLACK);
+                    g2d.fillRect(px + 10, py + h/3, 4, 2);
+                    g2d.fillRect(px + 20, py + 2*h/3, 6, 2);
+                }
+            }
+        }
     }
 
     private void initDarknessVignette(int screenW, int screenH) {
@@ -343,7 +431,7 @@ public class VFXManager {
         g2.dispose();
     }
 
-    public void drawOverlays(Graphics g, int screenW, int screenH, long currentTime, gameproject.GamePanel game) {
+    public void drawOverlay(Graphics g, GamePanel game, int screenW, int screenH, long currentTime) {
         Graphics2D g2d = (Graphics2D) g;
 
         // 1. Flash
@@ -374,7 +462,7 @@ public class VFXManager {
 
         // 3. Acid Rain
         if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.ACID_RAIN &&
-            gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
+                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
             g2d.setColor(new Color(150, 255, 0, 40));
             g2d.fillRect(0, 0, screenW, screenH);
             g2d.setColor(new Color(100, 255, 50, 100));
@@ -386,14 +474,17 @@ public class VFXManager {
         }
 
         // 4. Darkness
-        if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS) {
+        boolean darknessActive = (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.DARKNESS);
+        if (darknessActive || nightmareAlpha > 0.01f) {
             float fadeAlpha = 1.0f;
-            if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING) {
-                fadeAlpha = Math.max(0, (float)(gameproject.state.PlayingState.eventEndTime - currentTime) / 3000f);
+            if (nightmareAlpha > 0.01f && !darknessActive) {
+                fadeAlpha = nightmareAlpha;
+            } else if (darknessActive && gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING) {
+                fadeAlpha = Math.max(0, (float) (gameproject.state.PlayingState.eventEndTime - currentTime) / 3000f);
             }
-            
-            if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE || 
-                gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING) {
+
+            if (nightmareAlpha > 0.01f || darknessActive && (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE
+                    || gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ENDING)) {
                 
                 if (darknessVignette == null) initDarknessVignette(screenW, screenH);
                 int screenX = (int) Math.round(game.player.getX() + game.player.getBounds().width / 2f) - game.camIntX;
@@ -403,7 +494,7 @@ public class VFXManager {
                 g2d.drawImage(darknessVignette, screenX - darknessVignette.getWidth()/2, screenY - darknessVignette.getHeight()/2, null);
                 g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1f));
                 
-            } else if (gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.WARNING) {
+            } else if (darknessActive && gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.WARNING) {
                 g2d.setColor(new Color(0, 0, 0, 80));
                 g2d.fillRect(0, 0, screenW, screenH);
             }
@@ -418,12 +509,10 @@ public class VFXManager {
                 
                 boolean highTier = game.player.getComboManager().getTier() >= 3;
                 
-                // 1. Tông màu đỏ toàn màn hình
                 g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, fadeAlpha));
                 g2d.setColor(new Color(180, 0, 0, highTier ? 12 : 25));
                 g2d.fillRect(0, 0, screenW, screenH);
                 
-                // 2. Viền đỏ pulsing (Blood Vignette)
                 float basePulse = (float) (Math.sin(currentTime / 200.0) * 0.12f + 0.3f);
                 float pulse = (highTier ? basePulse * 0.6f : basePulse) * fadeAlpha;
                 

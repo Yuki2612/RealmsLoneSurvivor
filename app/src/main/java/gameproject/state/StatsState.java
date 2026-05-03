@@ -22,7 +22,11 @@ public class StatsState implements State {
     };
     private int[] statLevels = new int[6];
     private int[] maxLevels = {30, 20, 10, 10, 20, 10};
-    private int[] baseCosts = {80, 250, 120, 100, 180, 220};
+
+    private static int getCost(int idx, int level) {
+        int[] baseCosts = {80, 250, 120, 100, 180, 220};
+        return (int)(baseCosts[idx] * Math.pow(1.1, level));
+    }
 
     public class StatNode {
         public int statIndex;
@@ -58,9 +62,6 @@ public class StatsState implements State {
         statLevels[4] = PlayerData.statCritLevel;
         statLevels[5] = PlayerData.statCooldownLevel;
 
-        int totalUpgrades = 0;
-        for (int l : statLevels) totalUpgrades += l;
-
         if (game.input.escPressed) {
             PlayerData.save();
             game.changeState(new MenuState());
@@ -82,17 +83,18 @@ public class StatsState implements State {
                         if (statLevels[req] == 0) canUnlock = false;
                     }
                     if (canUnlock) {
-                        int cost = (int)(baseCosts[node.statIndex] * Math.pow(1.06, totalUpgrades));
+                        // SỬ DỤNG HÀM getCost VỚI HỆ SỐ 1.1
+                        int cost = getCost(node.statIndex, statLevels[node.statIndex]);
                         if (statLevels[node.statIndex] < maxLevels[node.statIndex] && PlayerData.gold >= cost) {
                             PlayerData.gold -= cost;
                             if (node.statIndex == 0) PlayerData.statHealthLevel++;
-                            if (node.statIndex == 1) PlayerData.statDamageLevel++;
-                            if (node.statIndex == 2) PlayerData.statSpeedLevel++;
-                            if (node.statIndex == 3) PlayerData.statDashLevel++;
-                            if (node.statIndex == 4) PlayerData.statCritLevel++;
-                            if (node.statIndex == 5) PlayerData.statCooldownLevel++;
+                            else if (node.statIndex == 1) PlayerData.statDamageLevel++;
+                            else if (node.statIndex == 2) PlayerData.statSpeedLevel++;
+                            else if (node.statIndex == 3) PlayerData.statDashLevel++;
+                            else if (node.statIndex == 4) PlayerData.statCritLevel++;
+                            else if (node.statIndex == 5) PlayerData.statCooldownLevel++;
                             statLevels[node.statIndex]++;
-                            gameproject.SoundManager.play("shoot"); // Âm thanh nhẹ khi nâng cấp
+                            gameproject.SoundManager.play("shoot");
                         }
                     }
                 }
@@ -105,11 +107,6 @@ public class StatsState implements State {
             
             game.input.clearClickAndKey();
         }
-    }
-
-    private StatNode getNodeByIndex(int index) {
-        for (StatNode n : nodes) if (n.statIndex == index) return n;
-        return null;
     }
 
     @Override

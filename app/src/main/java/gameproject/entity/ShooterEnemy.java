@@ -50,7 +50,7 @@ public class ShooterEnemy extends Enemy {
                 this.tier = 5;
             } // 1s
         }
-        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.05f));
+        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.08f));
         this.hp = this.maxHp;
         this.currentCooldown = rand.nextInt(shootCooldown); // Đừng bắn cùng lúc
     }
