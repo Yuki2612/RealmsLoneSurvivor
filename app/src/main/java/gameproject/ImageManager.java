@@ -15,7 +15,11 @@ public class ImageManager {
         if (images.containsKey(name))
             return;
         try {
-            BufferedImage img = ImageIO.read(new File(path));
+            File file = new File(path);
+            if (!file.exists() && !path.startsWith("app/")) {
+                file = new File("app/" + path);
+            }
+            BufferedImage img = ImageIO.read(file);
             images.put(name, img);
         } catch (IOException e) {
             // System.err.println("LỖI CHÍ MẠNG: Không tìm thấy ảnh tại đường dẫn -> " +
@@ -34,11 +38,16 @@ public class ImageManager {
         if (animations.containsKey(key))
             return;
         File file = new File(path);
+        if (!file.exists() && !path.startsWith("app/")) {
+            file = new File("app/" + path);
+        }
 
         // LOGIC THÔNG MINH: Nếu không thấy file chính xác, thử tìm file có hậu tố _f hoặc tên tương tự (không phân biệt hoa thường)
         if (!file.exists()) {
             String dirPath = file.getParent();
-            if (dirPath == null) dirPath = "app/res";
+            if (dirPath == null) {
+                dirPath = "app/res";
+            }
             File directory = new File(dirPath);
             
             if (directory.exists() && directory.isDirectory()) {

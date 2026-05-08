@@ -54,44 +54,87 @@ public class WeaponSelectUI {
             g2d.setColor(new Color(0, 0, 0, 100));
             g2d.fillRoundRect(cardRect.x + 10, cardRect.y + 10, cardRect.width, cardRect.height, 25, 25);
 
-            // Card Background (Glassmorphism)
-            g2d.setColor(isHovered ? new Color(40, 40, 55, 255) : new Color(25, 25, 35, 240));
+            // Card Background (Glassmorphism + Gradient)
+            GradientPaint cardBg = isHovered 
+                ? new GradientPaint(cardRect.x, cardRect.y, new Color(55, 55, 75, 250), cardRect.x, cardRect.y + cardRect.height, new Color(25, 25, 35, 250))
+                : new GradientPaint(cardRect.x, cardRect.y, new Color(35, 35, 45, 230), cardRect.x, cardRect.y + cardRect.height, new Color(15, 15, 25, 230));
+            g2d.setPaint(cardBg);
             g2d.fillRoundRect(cardRect.x, cardRect.y, cardRect.width, cardRect.height, 25, 25);
+
+            // Tech Grid Lines background
+            g2d.setColor(new Color(255, 255, 255, 5));
+            for(int j=20; j<cardRect.height; j+=20) {
+                g2d.drawLine(cardRect.x, cardRect.y + j, cardRect.x + cardRect.width, cardRect.y + j);
+            }
+            for(int j=20; j<cardRect.width; j+=20) {
+                g2d.drawLine(cardRect.x + j, cardRect.y, cardRect.x + j, cardRect.y + cardRect.height);
+            }
 
             // Border
             if (isHovered) {
-                g2d.setStroke(new BasicStroke(4));
+                g2d.setStroke(new BasicStroke(3));
                 g2d.setColor(new Color(255, 215, 0)); // Gold glow
             } else {
-                g2d.setStroke(new BasicStroke(1));
-                g2d.setColor(new Color(100, 100, 120));
+                g2d.setStroke(new BasicStroke(2));
+                g2d.setColor(new Color(80, 80, 100));
             }
             g2d.drawRoundRect(cardRect.x, cardRect.y, cardRect.width, cardRect.height, 25, 25);
 
             // Image Holder Section
-            int imgSize = 120;
+            int imgSize = 130;
             int imgX = cardRect.x + cardW / 2 - imgSize / 2;
             int imgY = cardRect.y + 40;
 
-            // Image Circle Backlight
-            g2d.setPaint(new RadialGradientPaint(imgX + imgSize/2, imgY + imgSize/2, imgSize/2 + 20, new float[]{0f, 1f}, new Color[]{new Color(100, 100, 255, 30), new Color(0, 0, 0, 0)}));
+            // Image Circle Backlight (Brighter on hover)
+            Color glowColor = isHovered ? new Color(100, 200, 255, 60) : new Color(100, 100, 255, 30);
+            g2d.setPaint(new RadialGradientPaint(imgX + imgSize/2, imgY + imgSize/2, imgSize/2 + 20, new float[]{0f, 1f}, new Color[]{glowColor, new Color(0, 0, 0, 0)}));
             g2d.fillOval(imgX - 10, imgY - 10, imgSize + 20, imgSize + 20);
             
             // Outer Circle
-            g2d.setStroke(new BasicStroke(2));
-            g2d.setColor(new Color(60, 60, 80));
-            g2d.drawOval(imgX - 5, imgY - 5, imgSize + 10, imgSize + 10);
+            g2d.setStroke(new BasicStroke(isHovered ? 3 : 2));
+            g2d.setColor(isHovered ? new Color(150, 200, 255) : new Color(60, 60, 80));
+            g2d.drawOval(imgX, imgY, imgSize, imgSize);
 
-            // IMAGE PLACEHOLDER (Will draw weapon sprite here later)
-            g2d.setFont(FontManager.getFont(12f));
-            g2d.setColor(new Color(80, 80, 100));
-            g2d.drawString("[ WEAPON IMAGE ]", imgX + 10, imgY + imgSize / 2 + 5);
+            // Draw actual weapon image with ASPECT RATIO preserved
+            String weaponKey = "";
+            if (options[i] instanceof gameproject.weapon.Shotgun) weaponKey = "shotgun";
+            else if (options[i] instanceof gameproject.weapon.SniperRifle) weaponKey = "sniper_rifle";
+            else if (options[i] instanceof gameproject.weapon.AssaultRifle) weaponKey = "assault_rifle";
+            
+            java.awt.image.BufferedImage wImg = gameproject.ImageManager.get(weaponKey);
+            if (wImg != null) {
+                int imgW = wImg.getWidth();
+                int imgH = wImg.getHeight();
+                int maxRenderSize = 100; // Phóng to ảnh lên một chút
+                
+                int drawW = maxRenderSize;
+                int drawH = maxRenderSize;
+                
+                // Tính toán tỷ lệ (Aspect Ratio)
+                if (imgW > imgH) {
+                    drawH = (int) ((float) imgH / imgW * maxRenderSize);
+                } else {
+                    drawW = (int) ((float) imgW / imgH * maxRenderSize);
+                }
+                
+                int rx = imgX + (imgSize - drawW) / 2;
+                int ry = imgY + (imgSize - drawH) / 2;
+                g2d.drawImage(wImg, rx, ry, drawW, drawH, null);
+            } else {
+                g2d.setFont(FontManager.getFont(12f));
+                g2d.setColor(new Color(80, 80, 100));
+                g2d.drawString("[ WEAPON ]", imgX + 25, imgY + imgSize / 2 + 5);
+            }
 
             // Weapon Name
-            g2d.setFont(FontManager.getFont(30f));
+            g2d.setFont(FontManager.getFont(32f));
             g2d.setColor(isHovered ? Color.YELLOW : Color.CYAN);
             String name = options[i].name.toUpperCase();
-            g2d.drawString(name, cardRect.x + cardW / 2 - g2d.getFontMetrics().stringWidth(name) / 2, imgY + imgSize + 60);
+            g2d.drawString(name, cardRect.x + cardW / 2 - g2d.getFontMetrics().stringWidth(name) / 2, imgY + imgSize + 55);
+
+            // Subtle divider line
+            g2d.setColor(new Color(255, 255, 255, 20));
+            g2d.drawLine(cardRect.x + 30, imgY + imgSize + 75, cardRect.x + cardW - 30, imgY + imgSize + 75);
 
             // Stats Section
             int statsY = imgY + imgSize + 110;

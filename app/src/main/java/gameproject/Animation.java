@@ -66,6 +66,10 @@ public class Animation {
         return currentFrame;
     }
 
+    public int getTotalFrames() {
+        return numFrames;
+    }
+
     /**
      * Kiểm tra xem animation đã chạy xong toàn bộ số tick của khung hình cuối cùng
      * chưa.

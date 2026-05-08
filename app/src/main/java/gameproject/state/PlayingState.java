@@ -17,12 +17,17 @@ import gameproject.skill.OrbitingOrbsSkill;
 import gameproject.environment.Building;
 
 public class PlayingState implements State {
-    public enum EventType { NONE, ACID_RAIN, DARKNESS, MIMIC_MANIA, BLOOD_MOON }
-    public enum EventPhase { WARNING, ACTIVE, ENDING }
+    public enum EventType {
+        NONE, ACID_RAIN, DARKNESS, MIMIC_MANIA, BLOOD_MOON
+    }
+
+    public enum EventPhase {
+        WARNING, ACTIVE, ENDING
+    }
 
     public static EventType activeEvent = EventType.NONE;
     public static EventPhase eventPhase = EventPhase.WARNING;
-    
+
     public static long eventEndTime = 0;
     private static long nextPhaseTime = 0;
     private static int lastCheckedWave = 0;
@@ -36,7 +41,7 @@ public class PlayingState implements State {
         lastCheckedWave = 0;
         lastDamageTick = 0;
     }
-    
+
     private boolean showStats = false;
     private boolean iKeyPrev = false;
 
@@ -67,7 +72,8 @@ public class PlayingState implements State {
         }
         iKeyPrev = game.input.iPressed;
 
-        if (showStats) return;
+        if (showStats)
+            return;
 
         long currentTime = gameproject.GamePanel.getTickTime();
         int surviveTimeSeconds = (int) ((currentTime - game.startTime) / 1000);
@@ -104,7 +110,21 @@ public class PlayingState implements State {
 
         // Dash afterimage
         if (game.player.isDashing()) {
-            game.vfxManager.addDashAfterimage(game.player.getX(), game.player.getY(), currentTime);
+            int dSize = gameproject.Player.SIZE + 20;
+            java.awt.image.BufferedImage currentFrame = null;
+            if (game.player.getActiveAnim() != null) {
+                currentFrame = game.player.getActiveAnim().getCurrentFrame();
+            }
+            if (currentFrame != null) {
+                game.vfxManager.addDashAfterimage(
+                    game.player.getX() - 10, 
+                    game.player.getY() - 20, 
+                    dSize, dSize, 
+                    currentTime, 
+                    currentFrame, 
+                    game.player.isFacingRight()
+                );
+            }
         }
 
         game.entityManager.update(game.player, game.vfxManager, game.activeSkills, game.screenWidth, game.screenHeight,
@@ -141,17 +161,21 @@ public class PlayingState implements State {
 
     private void handleEvents(GamePanel game, long currentTime) {
         int wave = game.entityManager.waveCount;
-        
+
         // Trigger mới mỗi 4 wave (bắt đầu từ wave 4)
         if (wave > 0 && wave % 4 == 0 && wave != lastCheckedWave) {
             lastCheckedWave = wave;
             // Chọn ngẫu nhiên 1 trong các event
             double rnd = Math.random();
-            if (rnd < 0.25) activeEvent = EventType.ACID_RAIN;
-            else if (rnd < 0.50) activeEvent = EventType.DARKNESS;
-            else if (rnd < 0.75) activeEvent = EventType.MIMIC_MANIA;
-            else activeEvent = EventType.BLOOD_MOON;
-            
+            if (rnd < 0.25)
+                activeEvent = EventType.ACID_RAIN;
+            else if (rnd < 0.50)
+                activeEvent = EventType.DARKNESS;
+            else if (rnd < 0.75)
+                activeEvent = EventType.MIMIC_MANIA;
+            else
+                activeEvent = EventType.BLOOD_MOON;
+
             eventPhase = EventPhase.WARNING;
             nextPhaseTime = currentTime + 10000;
             eventEndTime = currentTime + 50000; // Tổng 50s (10s báo + 40s chạy)
@@ -165,7 +189,7 @@ public class PlayingState implements State {
                     // Chuyển sang phase kết thúc (dần dần sáng)
                     eventPhase = EventPhase.ENDING;
                     eventEndTime = currentTime + 3000; // 3 giây để tan biến bóng tối
-                    
+
                     if (activeEvent == EventType.MIMIC_MANIA) {
                         java.util.List<gameproject.entity.EventTreasure> chestsToConvert;
                         synchronized (game.entityManager.eventChests) {
@@ -190,13 +214,16 @@ public class PlayingState implements State {
                 long timeLeft = (nextPhaseTime - currentTime) / 1000;
                 if (timeLeft >= 0) {
                     String msg = "";
-                    if (activeEvent == EventType.ACID_RAIN) msg = "⚠ ACID RAIN IN " + timeLeft + "s! FIND SHELTER!";
-                    else if (activeEvent == EventType.DARKNESS) msg = "⚠ DARKNESS APPROACHING IN " + timeLeft + "s!";
-                    else if (activeEvent == EventType.BLOOD_MOON) msg = "⚠ BLOOD MOON IN " + timeLeft + "s! PREPARE FOR CARNAGE!";
+                    if (activeEvent == EventType.ACID_RAIN)
+                        msg = "⚠ ACID RAIN IN " + timeLeft + "s! FIND SHELTER!";
+                    else if (activeEvent == EventType.DARKNESS)
+                        msg = "⚠ DARKNESS APPROACHING IN " + timeLeft + "s!";
+                    else if (activeEvent == EventType.BLOOD_MOON)
+                        msg = "⚠ BLOOD MOON IN " + timeLeft + "s! PREPARE FOR CARNAGE!";
                     else if (activeEvent == EventType.MIMIC_MANIA) {
                         msg = "⚠ FIND TREASURES IN BUILDINGS! (" + timeLeft + "s)";
                     }
-                    
+
                     // Chỉ show banner mỗi giây
                     if (currentTime % 1000 < 50) {
                         game.vfxManager.showWaveBanner(msg, Color.YELLOW, currentTime);
@@ -205,19 +232,21 @@ public class PlayingState implements State {
                 if (currentTime > nextPhaseTime) {
                     eventPhase = EventPhase.ACTIVE;
                     String startMsg = "NIGHTFALL!";
-                    if (activeEvent == EventType.ACID_RAIN) startMsg = "ACID RAIN ACTIVE!";
+                    if (activeEvent == EventType.ACID_RAIN)
+                        startMsg = "ACID RAIN ACTIVE!";
                     else if (activeEvent == EventType.MIMIC_MANIA) {
                         startMsg = "FIND THEM BEFORE THEY AWAKEN!";
                         // Spawn rương khi bắt đầu phase ACTIVE (hết 10s đếm ngược)
                         synchronized (game.buildings) {
                             for (Building b : game.buildings) {
                                 java.awt.Rectangle r = b.getBounds();
-                                game.entityManager.eventChests.add(new gameproject.entity.EventTreasure(r.x + r.width/2 - 20, r.y + r.height/2 - 20));
+                                game.entityManager.eventChests.add(new gameproject.entity.EventTreasure(
+                                        r.x + r.width / 2 - 20, r.y + r.height / 2 - 20));
                             }
                         }
-                    }
-                    else if (activeEvent == EventType.BLOOD_MOON) startMsg = "THE BLOOD MOON RISES!";
-                    
+                    } else if (activeEvent == EventType.BLOOD_MOON)
+                        startMsg = "THE BLOOD MOON RISES!";
+
                     game.vfxManager.showWaveBanner(startMsg, Color.RED, currentTime);
                 }
             } else if (eventPhase == EventPhase.ACTIVE) {
@@ -261,15 +290,17 @@ public class PlayingState implements State {
         float worldMouseY = game.input.mouseY + game.cameraY;
 
         // Ghi lại số lượng đạn trước khi bắn để xác định đạn mới
-        int prevSize = game.entityManager.projectiles.size();
-        game.currentWeapon.shoot(game.player.getX(), game.player.getY(), worldMouseX, worldMouseY,
-                game.upgradeManager.playerDamage, bouncesAndPierces, game.entityManager.projectiles,
-                currentTime);
+        synchronized (game.entityManager.projectiles) {
+            int prevSize = game.entityManager.projectiles.size();
+            game.currentWeapon.shoot(game.player.getX(), game.player.getY(), worldMouseX, worldMouseY,
+                    game.upgradeManager.playerDamage, bouncesAndPierces, game.entityManager.projectiles,
+                    currentTime);
 
-        // Gán flag isCrit cho tất cả đạn vừa được thêm
-        if (isCrit) {
-            for (int i = prevSize; i < game.entityManager.projectiles.size(); i++) {
-                game.entityManager.projectiles.get(i).isCrit = true;
+            // Gán flag isCrit cho tất cả đạn vừa được thêm
+            if (isCrit) {
+                for (int i = prevSize; i < game.entityManager.projectiles.size(); i++) {
+                    game.entityManager.projectiles.get(i).isCrit = true;
+                }
             }
         }
     }
@@ -299,14 +330,15 @@ public class PlayingState implements State {
             g.setColor(java.awt.Color.DARK_GRAY);
             g.fillRect(0, 0, game.screenWidth, game.screenHeight);
         }
-        
+
         // CHỐT SỔ TỌA ĐỘ CAMERA DUY NHẤT 1 LẦN CHO CHU KỲ RENDER
         game.camIntX = (int) Math.round(game.cameraX);
         game.camIntY = (int) Math.round(game.cameraY);
 
         game.vfxManager.applyScreenShake(g2d);
 
-        // QUY CHUẨN PIXEL-PERFECT: Dịch chuyển toàn bộ thế giới theo tọa độ camera đã chốt sổ
+        // QUY CHUẨN PIXEL-PERFECT: Dịch chuyển toàn bộ thế giới theo tọa độ camera đã
+        // chốt sổ
         g2d.translate(-game.camIntX, -game.camIntY);
 
         // 1. Vẽ Sàn nhà (Nằm dưới mọi vật thể nhưng trên cỏ)

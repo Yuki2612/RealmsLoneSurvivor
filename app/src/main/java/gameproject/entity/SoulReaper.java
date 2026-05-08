@@ -29,7 +29,7 @@ public class SoulReaper extends Enemy {
     private boolean facingRight = true; // Hướng mặt của Boss
 
     public SoulReaper(float startX, float startY, int surviveTimeSeconds) {
-        super(startX, startY, 90, 600 + (surviveTimeSeconds * 5), 1.6f, Color.RED);
+        super(startX, startY, 90, (int) ((500 + (surviveTimeSeconds * 8)) * 1.25), 2.2f, Color.RED);
         this.isBoss = true;
         this.deathFadeDuration = 1500;
 
@@ -98,9 +98,9 @@ public class SoulReaper extends Enemy {
                 if (actionTimer > 0)
                     actionTimer--;
 
-                // 1. Kiểm tra vật cản phía trước
-                boolean hasObstacleNearby = panel.mapManager.isSolid((int)x, (int)y) || 
-                                          !panel.mapManager.isNavigable((int)(x + (dx/dist)*60), (int)(y + (dy/dist)*60));
+                // 1. Kiểm tra vật cản xung quanh boss (75px)
+                boolean hasObstacleNearby = !panel.mapManager.getObstaclesInRadius(x + size / 2f, y + size / 2f, 75)
+                        .isEmpty();
 
                 // 1. Dash áp sát (Charge) nếu ở quá xa
                 if (actionTimer <= 0 && dist > 450 && !hasObstacleNearby) {
@@ -136,7 +136,13 @@ public class SoulReaper extends Enemy {
                 if (dashAnim != null)
                     dashAnim.update();
                 if (currentTime % 2 == 0) { // Tăng mật độ bóng mờ để mượt hơn
-                    panel.vfxManager.addDashAfterimage(x, y, currentTime);
+                    int bw = (int) (64 * 2.8f);
+                    int bh = (int) (64 * 2.8f);
+                    java.awt.image.BufferedImage currentFrame = (dashAnim != null) ? dashAnim.getCurrentFrame() : null;
+                    if (currentFrame != null) {
+                        panel.vfxManager.addDashAfterimage(x - bw / 2 + size / 2, y - bh + size, bw, bh, currentTime,
+                                currentFrame, facingRight);
+                    }
                 }
 
                 if (actionTimer > 0)
@@ -163,12 +169,20 @@ public class SoulReaper extends Enemy {
                     // GIAI ĐOẠN 2: Lao vào chém - Khung hình 3-5
                     else if (idx <= 5) {
                         float angle = (float) Math.atan2(playerY - y, playerX - x);
-                        x += (float) Math.cos(angle) * baseSpeed * 10.0f;
-                        y += (float) Math.sin(angle) * baseSpeed * 10.0f;
+                        x += (float) Math.cos(angle) * baseSpeed * 11.0f;
+                        y += (float) Math.sin(angle) * baseSpeed * 11.0f;
                         EnemyController.resolveHybridCollision(this, panel.mapManager);
 
                         if (currentTime % 2 == 0) {
-                            panel.vfxManager.addDashAfterimage(x, y, currentTime);
+                            int bw = (int) (64 * 2.8f);
+                            int bh = (int) (64 * 2.8f);
+                            java.awt.image.BufferedImage currentFrame = (attackAnim != null)
+                                    ? attackAnim.getCurrentFrame()
+                                    : null;
+                            if (currentFrame != null) {
+                                panel.vfxManager.addDashAfterimage(x - bw / 2 + size / 2, y - bh + size, bw, bh,
+                                        currentTime, currentFrame, facingRight);
+                            }
                         }
                     }
 

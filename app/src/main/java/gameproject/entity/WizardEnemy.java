@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Random;
 import gameproject.weapon.Projectile;
 
-public class CannoneerEnemy extends Enemy {
+public class WizardEnemy extends Enemy {
     private Random rand = new Random();
     private int tier;
 
@@ -15,8 +15,8 @@ public class CannoneerEnemy extends Enemy {
     private boolean canShoot = false;
     private float targetPX, targetPY;
 
-    public CannoneerEnemy(float startX, float startY, int tier, int surviveTimeSeconds) {
-        super(startX, startY, 40, 0, 0, Color.ORANGE); // Size to hơn chút
+    public WizardEnemy(float startX, float startY, int tier, int surviveTimeSeconds) {
+        super(startX, startY, 40, 0, 0, Color.ORANGE);
         this.isBoss = false;
         this.tier = tier;
 
@@ -25,7 +25,7 @@ public class CannoneerEnemy extends Enemy {
                 this.maxHp = 30;
                 this.speed = 0.8f;
                 this.shootCooldown = 300;
-            } // 5s
+            }
             case 2 -> {
                 this.maxHp = 50;
                 this.speed = 0.9f;
@@ -62,10 +62,7 @@ public class CannoneerEnemy extends Enemy {
         float dx = playerX - x;
         float dy = playerY - y;
         float distance = (float) Math.sqrt(dx * dx + dy * dy);
-        float currentSpeed = speed * speedMultiplier;
-        float moveX = 0, moveY = 0;
 
-        // Sử dụng bộ não AI tập trung để xử lý di chuyển và va chạm (Sliding Collision)
         EnemyController.moveEnemy(this, panel, speedMultiplier);
 
         if (currentCooldown > 0)
@@ -80,11 +77,10 @@ public class CannoneerEnemy extends Enemy {
     public java.util.List<Projectile> shoot() {
         if (canShoot) {
             canShoot = false;
-            // Đạn bay chậm
             Projectile p = new Projectile(x, y, targetPX, targetPY, 0.5f, 600f);
             p.isEnemyBullet = true;
-            p.isExplosive = true; // Cờ đạn nổ
-            p.explosionRadius = 40 + (tier * 10); // Bán kính nổ tăng theo tier
+            p.isExplosive = true;
+            p.explosionRadius = 40 + (tier * 10);
             p.damage = 1;
             return java.util.List.of(p);
         }
@@ -93,9 +89,7 @@ public class CannoneerEnemy extends Enemy {
 
     @Override
     public void draw(Graphics g) {
-        drawSprite(g, "enemy" + tier);
-        // Đánh dấu Pháo thủ bằng chấm đỏ
-        g.setColor(Color.RED);
-        g.fillOval((int) x + size / 2 - 4, (int) y - 12, 8, 8);
+        // Sử dụng ảnh wizard cho tất cả các tier, không vẽ chấm màu
+        drawSprite(g, "enemy_wizard");
     }
 }

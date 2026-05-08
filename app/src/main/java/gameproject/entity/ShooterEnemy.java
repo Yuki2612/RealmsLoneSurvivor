@@ -7,8 +7,6 @@ import java.util.Random;
 import gameproject.weapon.Projectile;
 
 public class ShooterEnemy extends Enemy {
-    private float wanderX, wanderY;
-    private int wanderTimer = 0;
     private Random rand = new Random();
     private int tier;
 
@@ -27,32 +25,32 @@ public class ShooterEnemy extends Enemy {
                 this.maxHp = 15;
                 this.speed = 1.0f;
                 this.shootCooldown = 240;
-            } // 3s
+            }
             case 2 -> {
                 this.maxHp = 25;
                 this.speed = 1.2f;
                 this.shootCooldown = 210;
-            } // 2.5s
+            }
             case 3 -> {
                 this.maxHp = 40;
                 this.speed = 1.5f;
                 this.shootCooldown = 180;
-            } // 2s
+            }
             case 4 -> {
                 this.maxHp = 60;
                 this.speed = 1.8f;
                 this.shootCooldown = 150;
-            } // 1.5s
+            }
             default -> {
                 this.maxHp = 80;
                 this.speed = 2.0f;
                 this.shootCooldown = 120;
                 this.tier = 5;
-            } // 1s
+            }
         }
         this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.08f));
         this.hp = this.maxHp;
-        this.currentCooldown = rand.nextInt(shootCooldown); // Đừng bắn cùng lúc
+        this.currentCooldown = rand.nextInt(shootCooldown);
     }
 
     @Override
@@ -64,10 +62,7 @@ public class ShooterEnemy extends Enemy {
         float dx = playerX - x;
         float dy = playerY - y;
         float distance = (float) Math.sqrt(dx * dx + dy * dy);
-        float currentSpeed = speed * speedMultiplier;
-        float moveX = 0, moveY = 0;
 
-        // Sử dụng bộ não AI tập trung để xử lý di chuyển và va chạm (Sliding Collision)
         EnemyController.moveEnemy(this, panel, speedMultiplier);
 
         if (currentCooldown > 0)
@@ -82,7 +77,7 @@ public class ShooterEnemy extends Enemy {
     public ArrayList<Projectile> shoot() {
         if (canShoot) {
             canShoot = false;
-            float bulletSpeed = 0.4f + (tier * 0.05f); // Đạn nhanh dần theo tier
+            float bulletSpeed = 0.4f + (tier * 0.05f);
             Projectile p = new Projectile(x, y, targetPX, targetPY, bulletSpeed, 800f);
             p.isEnemyBullet = true;
             p.damage = 1;
@@ -93,11 +88,7 @@ public class ShooterEnemy extends Enemy {
 
     @Override
     public void draw(Graphics g) {
-        // Tạm mượn ảnh enemy, bạn có thể thêm "shooter1" -> "shooter5" sau
-        drawSprite(g, "enemy" + tier);
-
-        // Vẽ thêm dấu hiệu là Xạ thủ (ví dụ: một chấm nhỏ trên đầu)
-        g.setColor(Color.YELLOW);
-        g.fillOval((int) x + size / 2 - 4, (int) y - 12, 8, 8);
+        // Sử dụng ảnh shooter cho tất cả các tier, không vẽ chấm màu
+        drawSprite(g, "enemy_shooter");
     }
 }

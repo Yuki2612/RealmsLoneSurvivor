@@ -35,7 +35,7 @@ public class ShadowBoss extends Enemy {
 
     public ShadowBoss(float startX, float startY, int surviveTimeSeconds) {
         // Tăng hitbox lên 55 để khớp với sprite hơn
-        super(startX, startY, 55, 700 + (surviveTimeSeconds * 5), 1.6f, new Color(100, 0, 150));
+        super(startX, startY, 55, (int) ((625 + (surviveTimeSeconds * 8)) * 1.4), 1.8f, new Color(100, 0, 150));
         this.isBoss = true;
         this.deathFadeDuration = 1500;
 
@@ -123,9 +123,9 @@ public class ShadowBoss extends Enemy {
                         lastNightmareActionTime = currentTime;
                     }
                 } else {
-                    // Kiểm tra vật cản phía trước trước khi lướt hoặc tấn công
-                    boolean hasObstacleNearby = panel.mapManager.isSolid((int)x, (int)y) || 
-                                              !panel.mapManager.isNavigable((int)(x + (dx/dist)*60), (int)(y + (dy/dist)*60));
+                    // Kiểm tra vật cản xung quanh boss (75px)
+                    boolean hasObstacleNearby = !panel.mapManager.getObstaclesInRadius(x + size / 2f, y + size / 2f, 75)
+                            .isEmpty();
 
                     if (actionTimer <= 0 && dist > 400 && !hasObstacleNearby) {
                         currentState = State.DASHING;
@@ -157,9 +157,6 @@ public class ShadowBoss extends Enemy {
 
                 if (dashAnim != null)
                     dashAnim.update();
-                if (currentTime % 2 == 0) {
-                    panel.vfxManager.addDashAfterimage(x, y, currentTime);
-                }
 
                 if (actionTimer > 0)
                     actionTimer--;
@@ -178,15 +175,12 @@ public class ShadowBoss extends Enemy {
                     if (idx < 2) {
                         speed = 0;
                     } else {
-                        float lungeMulti = (nightmareTriggered && nightmareCounter > 0) ? 5f : 4.5f;
+                        float lungeMulti = (nightmareTriggered && nightmareCounter > 0) ? 5.75f : 5f;
                         float angle = (float) Math.atan2(playerY - y, playerX - x);
                         x += (float) Math.cos(angle) * baseSpeed * lungeMulti;
                         y += (float) Math.sin(angle) * baseSpeed * lungeMulti;
                         EnemyController.resolveHybridCollision(this, panel.mapManager);
 
-                        if (nightmareTriggered && currentTime % 2 == 0) {
-                            panel.vfxManager.addDashAfterimage(x, y, currentTime);
-                        }
                     }
 
                     if (idx >= 3 && attackFrameCounter == 0) {

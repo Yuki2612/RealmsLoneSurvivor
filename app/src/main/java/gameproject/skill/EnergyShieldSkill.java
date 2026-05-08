@@ -15,15 +15,27 @@ public class EnergyShieldSkill implements PassiveSkill {
     @Override
     public void update(Player player, ArrayList<Enemy> enemies, VFXManager vfxManager, long currentTime) {
         int level = player.getBreakthroughLevel(Upgrade.ENERGY_SHIELD);
-        if (level > 0 && !player.hasShield) {
+        if (level > 0) {
             float soulMulti = 1.0f
                     + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.ENERGY_SHIELD, 0) * 0.05f);
-            long cooldown = (long) ((15000 - (level * 1000)) / soulMulti);
-            if (currentTime - lastActivateTime > cooldown) {
-                player.hasShield = true;
-                lastActivateTime = currentTime;
-                // Hiệu ứng hạt khi khiên hồi phục
-                vfxManager.spawnDeathParticles(player.getX() + 12, player.getY() + 12, currentTime, Color.CYAN);
+
+            // Base cooldown 30s. Mỗi level giảm 2s.
+            long cooldown = (long) ((30000 - (level * 2000)) / soulMulti);
+
+            if (player.hasShield) {
+                // Kiểm tra thời gian tồn tại của khiên (3 giây = 3000ms)
+                if (currentTime - lastActivateTime > 3000) {
+                    player.hasShield = false;
+                }
+            } else {
+                // Nếu không có khiên, kiểm tra thời gian hồi chiêu
+                if (currentTime - lastActivateTime > cooldown) {
+                    player.hasShield = true;
+                    lastActivateTime = currentTime;
+                    // Hiệu ứng hạt khi khiên bật lên
+                    vfxManager.spawnDeathParticles(player.getX() + 12, player.getY() + 12, currentTime, Color.CYAN);
+                    gameproject.SoundManager.play("powerup"); // Thêm một chút âm thanh báo hiệu khiên bật
+                }
             }
         }
     }

@@ -13,7 +13,7 @@ public class Mimic extends Enemy {
 
     public Mimic(float x, float y, int wave) {
         // Máu Mimic: 150 + wave * 40
-        super(x, y, 70, 200 + (wave * 50), 2.8f, Color.MAGENTA);
+        super(x, y, 70, 300 + (wave * 70), 3.5f, Color.MAGENTA);
         this.spawnTime = GamePanel.getTickTime();
         this.isBoss = false;
     }
@@ -30,5 +30,9 @@ public class Mimic extends Enemy {
         drawSprite(g, "mimic");
     }
 
-    // Xóa takeDamage và getExpValue vì lớp cha đã quản lý qua hp và maxHp
+    @Override
+    public int getExpValue() {
+        // Giảm EXP nhận được từ Mimic (chỉ bằng 1/4 máu tối đa) để cân bằng game
+        return maxHp / 4;
+    }
 }

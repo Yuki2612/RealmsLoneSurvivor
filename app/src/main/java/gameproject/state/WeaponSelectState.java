@@ -25,8 +25,8 @@ public class WeaponSelectState implements State {
         if (options == null) {
             options = new Weapon[3];
             options[0] = new Shotgun();
-            options[1] = new AssaultRifle();
-            options[2] = new SMG();
+            options[1] = new SniperRifle();
+            options[2] = new AssaultRifle();
 
             // Shotgun + Explosive Bullets lv1 + Might lv3 → Hellfire Boomstick
             if (game.currentWeapon instanceof Shotgun &&
@@ -34,13 +34,13 @@ public class WeaponSelectState implements State {
                     game.player.getUpgradeLevel(Upgrade.DAMAGE) >= 3) {
                 options[0] = new HellfireBoomstick();
             }
-            // AssaultRifle + Optical Scope lv3 → Railgun
-            if (game.currentWeapon instanceof AssaultRifle &&
+            // SniperRifle + Optical Scope lv3 → Railgun
+            if (game.currentWeapon instanceof SniperRifle &&
                     game.player.getUpgradeLevel(Upgrade.OPTICAL_SCOPE) >= 3) {
                 options[1] = new Railgun();
             }
-            // SMG + Chain Lightning lv1 + Fire Rate lv3 → Lightning Gun
-            if (game.currentWeapon instanceof SMG &&
+            // AssaultRifle + Chain Lightning lv1 + Fire Rate lv3 → Lightning Gun
+            if (game.currentWeapon instanceof AssaultRifle &&
                     game.player.getBreakthroughLevel(Upgrade.CHAIN_LIGHTNING) > 0 &&
                     game.player.getUpgradeLevel(Upgrade.FIRE_RATE) >= 3) {
                 options[2] = new LightningGun();

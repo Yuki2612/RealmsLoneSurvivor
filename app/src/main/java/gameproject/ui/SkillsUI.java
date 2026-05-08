@@ -172,7 +172,7 @@ public class SkillsUI {
         int btnY = y + h - 60;
         
         if (!isUnlocked) {
-            int unlockCost = 50;
+            int unlockCost = 20;
             boolean canAfford = PlayerData.soulStones >= unlockCost;
             g2d.setColor(canAfford ? new Color(100, 50, 0) : new Color(50, 20, 20));
             g2d.fillRoundRect(btnX, btnY, btnW, btnH, 10, 10);
@@ -182,7 +182,7 @@ public class SkillsUI {
             g2d.setFont(FontManager.getFont(18f));
             g2d.drawString("UNLOCK: " + unlockCost, btnX + 18, btnY + 28);
         } else if (lv < maxLv) {
-            int cost = 15 * (lv + 1);
+            int cost = (int) (15 * Math.pow(1.2, lv));
             boolean canAfford = PlayerData.soulStones >= cost;
             
             g2d.setColor(canAfford ? new Color(0, 100, 50) : new Color(50, 50, 50));

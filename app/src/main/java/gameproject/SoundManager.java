@@ -63,6 +63,9 @@ public class SoundManager {
     private static byte[] readFileBytes(String path) {
         try {
             File file = new File(path);
+            if (!file.exists() && !path.startsWith("app/")) {
+                file = new File("app/" + path);
+            }
             if (!file.exists())
                 return null;
             FileInputStream fis = new FileInputStream(file);

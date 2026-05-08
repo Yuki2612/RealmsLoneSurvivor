@@ -19,7 +19,7 @@ public enum Upgrade {
         EXPLOSIVE_BULLETS("Explosive Bullets (+Radius & Damage)", true, 5),
         FROST_AURA("Frost Aura (+Freeze Radius)", true, 5),
         POISON_CLOUD("Poison Cloud (+Radius & Chance)", true, 5),
-        ENERGY_SHIELD("Energy Shield (Absorb Hit, -Cooldown)", true, 5),
+        ENERGY_SHIELD("Energy Shield ( Guard, -- CD)", true, 5),
         METEOR_STRIKE("Meteor Strike (Random AOE explosions)", true, 5),
         PULSE_WAVE("Pulse Wave (AOE knockback & damage)", true, 5);
 

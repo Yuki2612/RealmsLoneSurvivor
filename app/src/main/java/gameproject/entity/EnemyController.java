@@ -35,15 +35,19 @@ public class EnemyController {
         if (panel.mapManager.isSolid(centerX, centerY)) {
             // Thử đẩy ra 4 hướng chính
             int pushDist = 16;
-            if (!panel.mapManager.isSolid(centerX - pushDist, centerY)) enemy.x -= 8;
-            else if (!panel.mapManager.isSolid(centerX + pushDist, centerY)) enemy.x += 8;
-            else if (!panel.mapManager.isSolid(centerX, centerY - pushDist)) enemy.y -= 8;
-            else if (!panel.mapManager.isSolid(centerX, centerY + pushDist)) enemy.y += 8;
+            if (!panel.mapManager.isSolid(centerX - pushDist, centerY))
+                enemy.x -= 8;
+            else if (!panel.mapManager.isSolid(centerX + pushDist, centerY))
+                enemy.x += 8;
+            else if (!panel.mapManager.isSolid(centerX, centerY - pushDist))
+                enemy.y -= 8;
+            else if (!panel.mapManager.isSolid(centerX, centerY + pushDist))
+                enemy.y += 8;
             else {
                 // Nếu kẹt cứng mọi hướng, đẩy về phía người chơi (thường là vùng an toàn)
                 float toPX = panel.player.getX() - enemy.x;
                 float toPY = panel.player.getY() - enemy.y;
-                float dist = (float)Math.sqrt(toPX*toPX + toPY*toPY);
+                float dist = (float) Math.sqrt(toPX * toPX + toPY * toPY);
                 if (dist > 0) {
                     enemy.x += (toPX / dist) * 10;
                     enemy.y += (toPY / dist) * 10;
@@ -67,6 +71,12 @@ public class EnemyController {
         float sepWeight = 0.6f;
         if (distSqP < 10000) sepWeight = 0.05f; // Rất nhỏ khi sát player
         else if (distSqP < 40000) sepWeight = 0.2f; 
+
+        // Cập nhật hướng quay mặt (Luôn hướng về phía người chơi giống Boss)
+        float enemyCenterX = enemy.x + enemy.size / 2f;
+        float playerCenterX = panel.player.getX() + gameproject.Player.SIZE / 2f;
+        if (playerCenterX > enemyCenterX + 5) enemy.movingRight = true;
+        else if (playerCenterX < enemyCenterX - 5) enemy.movingRight = false;
 
         // 3. VẬT LÝ QUÁN TÍNH
         float targetVelX = (dirX * currentSpeed) + sep[0] * sepWeight;
@@ -112,7 +122,8 @@ public class EnemyController {
 
     /**
      * Thuật toán phát hiện và đẩy trượt vật lý.
-     * Biến quái vật thành một hình tròn ở sát chân để tương tác mượt với môi trường.
+     * Biến quái vật thành một hình tròn ở sát chân để tương tác mượt với môi
+     * trường.
      */
     public static boolean resolveHybridCollision(Enemy enemy, MapManager map) {
         boolean collided = false;
@@ -124,7 +135,8 @@ public class EnemyController {
 
         for (Obstacle obs : nearObs) {
             Hitbox hb = obs.getHitbox();
-            if (hb == null) continue;
+            if (hb == null)
+                continue;
 
             if (hb instanceof CircleHitbox) {
                 CircleHitbox cb = (CircleHitbox) hb;
@@ -138,18 +150,18 @@ public class EnemyController {
                     float dist = (float) Math.sqrt(distSq);
                     // Nếu tâm trùng nhau, tạo một hướng đẩy ngẫu nhiên nhẹ để không bị kẹt cứng
                     if (dist < 0.1f) {
-                        dx = (float)Math.random() - 0.5f;
-                        dy = (float)Math.random() - 0.5f;
-                        dist = (float)Math.sqrt(dx*dx + dy*dy);
+                        dx = (float) Math.random() - 0.5f;
+                        dy = (float) Math.random() - 0.5f;
+                        dist = (float) Math.sqrt(dx * dx + dy * dy);
                     }
-                    
+
                     float overlap = minDist - dist;
                     float nx = dx / dist;
                     float ny = dy / dist;
 
                     enemy.x += nx * overlap;
                     enemy.y += ny * overlap;
-                    
+
                     // Cập nhật lại tâm ngay lập tức cho các lần kiểm tra vật thể tiếp theo
                     cx = enemy.x + enemy.size / 2.0f;
                     cy = enemy.y + enemy.size * 0.85f;
@@ -175,10 +187,14 @@ public class EnemyController {
                     float dt = cy - ab.y;
                     float db = (ab.y + ab.height) - cy;
                     float minDist = Math.min(Math.min(dl, dr), Math.min(dt, db));
-                    if (minDist == dl) enemy.x -= (dl + radius);
-                    else if (minDist == dr) enemy.x += (dr + radius);
-                    else if (minDist == dt) enemy.y -= (dt + radius);
-                    else enemy.y += (db + radius);
+                    if (minDist == dl)
+                        enemy.x -= (dl + radius);
+                    else if (minDist == dr)
+                        enemy.x += (dr + radius);
+                    else if (minDist == dt)
+                        enemy.y -= (dt + radius);
+                    else
+                        enemy.y += (db + radius);
                 }
                 cx = enemy.x + enemy.size / 2.0f;
                 cy = enemy.y + enemy.size * 0.85f;
@@ -193,21 +209,25 @@ public class EnemyController {
         float maxCheckDist = me.size * 1.5f;
         float maxCheckDistSq = maxCheckDist * maxCheckDist;
 
-        // TỐI ƯU O(N): Chỉ kiểm tra các thực thể trong vùng lân cận để tránh lag khi quái đông
+        // TỐI ƯU O(N): Chỉ kiểm tra các thực thể trong vùng lân cận để tránh lag khi
+        // quái đông
         for (Enemy other : enemies) {
             if (other == me || other.isDying)
                 continue;
-            
+
             // Box check nhanh trước khi tính bình phương
             float dx = me.x - other.x;
-            if (Math.abs(dx) > maxCheckDist) continue;
+            if (Math.abs(dx) > maxCheckDist)
+                continue;
             float dy = me.y - other.y;
-            if (Math.abs(dy) > maxCheckDist) continue;
+            if (Math.abs(dy) > maxCheckDist)
+                continue;
 
             float distSq = dx * dx + dy * dy;
             if (distSq > 0 && distSq < maxCheckDistSq) {
                 float dist = (float) Math.sqrt(distSq);
-                float safeDistance = (me.size + other.size) * 0.45f; // Cho phép quái chồng lấn nhẹ để trông đông đúc hơn
+                float safeDistance = (me.size + other.size) * 0.45f; // Cho phép quái chồng lấn nhẹ để trông đông đúc
+                                                                     // hơn
                 if (dist < safeDistance) {
                     float force = (safeDistance - dist) / safeDistance;
                     sepX += (dx / dist) * force * 1.5f;
@@ -215,12 +235,13 @@ public class EnemyController {
                     count++;
                 }
             }
-            if (count > 10) break; // Chỉ tính toán tối đa 10 quái gần nhất để giữ 60 FPS
+            if (count > 10)
+                break; // Chỉ tính toán tối đa 10 quái gần nhất để giữ 60 FPS
         }
 
         // Giới hạn lực đẩy tối đa để tránh bị "bắn" ra quá mạnh
         float maxSep = 4.0f;
-        float sepLen = (float)Math.sqrt(sepX*sepX + sepY*sepY);
+        float sepLen = (float) Math.sqrt(sepX * sepX + sepY * sepY);
         if (sepLen > maxSep) {
             sepX = (sepX / sepLen) * maxSep;
             sepY = (sepY / sepLen) * maxSep;

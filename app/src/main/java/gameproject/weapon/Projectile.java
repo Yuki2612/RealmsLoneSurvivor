@@ -2,13 +2,14 @@ package gameproject.weapon;
 
 import java.awt.Color;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
 
 public class Projectile {
     private float x, y;
     public float startX, startY;
     public float speedX, speedY;
-    private int size = 10;
+    public int size = 10;
     private boolean active = true;
 
     public int bouncesLeft = 0;
@@ -23,10 +24,17 @@ public class Projectile {
     public boolean isRailgun = false;
     public boolean isCrit = false; // Crit hit — hiện text vàng tại địch khi trúng
 
-    // THÊM: Hỗ trợ đạn nổ cho Pháo thủ
     public boolean isExplosive = false;
     public float explosionRadius = 0;
     public long expirationTime = 0; // 0 = không hết hạn theo thời gian
+
+    // THÊM: Hỗ trợ đạn rượt (Homing)
+    public boolean isHoming = false;
+    public gameproject.Player targetPlayer = null;
+    public float homingTurnSpeed = 0.05f;
+    
+    // THÊM: Hỗ trợ khói/ma tím
+    public boolean isPurpleGhost = false;
 
     public gameproject.entity.Enemy ignoredEnemy = null;
 
@@ -50,6 +58,32 @@ public class Projectile {
     }
 
     public void update(int worldWidth, int worldHeight) {
+        if (isHoming && targetPlayer != null) {
+            float targetDx = (targetPlayer.getX() + targetPlayer.SIZE / 2) - x;
+            float targetDy = (targetPlayer.getY() + targetPlayer.SIZE / 2) - y;
+            float dist = (float) Math.sqrt(targetDx * targetDx + targetDy * targetDy);
+            
+            if (dist > 0) {
+                targetDx /= dist;
+                targetDy /= dist;
+                
+                // Nới lỏng quỹ đạo từ từ (Lerp hướng)
+                float currentSpeed = (float) Math.sqrt(speedX * speedX + speedY * speedY);
+                if (currentSpeed == 0) currentSpeed = 1;
+                
+                float dirX = speedX / currentSpeed;
+                float dirY = speedY / currentSpeed;
+                
+                dirX += (targetDx - dirX) * homingTurnSpeed;
+                dirY += (targetDy - dirY) * homingTurnSpeed;
+                
+                // Chuẩn hóa lại
+                float newDist = (float) Math.sqrt(dirX * dirX + dirY * dirY);
+                speedX = (dirX / newDist) * currentSpeed;
+                speedY = (dirY / newDist) * currentSpeed;
+            }
+        }
+
         x += speedX;
         y += speedY;
 
@@ -62,6 +96,8 @@ public class Projectile {
         }
     }
 
+    public boolean isFairyBullet = false;
+
     public void draw(Graphics g) {
         int drawX = (int) Math.round(x);
         int drawY = (int) Math.round(y);
@@ -69,7 +105,39 @@ public class Projectile {
         if (isRailgun) {
             g.setColor(Color.CYAN);
             g.fillRect(drawX, drawY, size * 3, size * 3);
+        } else if (isFairyBullet) {
+            // Viên đạn phát sáng xanh lá giống năng lượng ma thuật
+            Graphics2D g2d = (Graphics2D) g.create();
+            int glowSize = size + 12;
+            g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.25f));
+            g2d.setColor(new Color(100, 255, 100));
+            g2d.fillOval(drawX - 6, drawY - 6, glowSize, glowSize);
+            g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
+            g2d.setColor(new Color(50, 220, 50));
+            g2d.fillOval(drawX - 3, drawY - 3, size + 6, size + 6);
+            g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 1.0f));
+            g2d.setColor(new Color(180, 255, 180));
+            g2d.fillOval(drawX, drawY, size, size);
+            g2d.dispose();
+        } else if (isPurpleGhost) {
+            Graphics2D g2d = (Graphics2D) g.create();
+            g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+            
+            java.awt.geom.Point2D center = new java.awt.geom.Point2D.Float(drawX + size/2f, drawY + size/2f);
+            float radius = size / 2f + 8f;
+            float[] dist = {0.0f, 0.6f, 1.0f};
+            Color[] colors = {new Color(255, 150, 255), new Color(150, 0, 255), new Color(50, 0, 100, 0)};
+            java.awt.RadialGradientPaint paint = new java.awt.RadialGradientPaint(center, radius, dist, colors);
+            g2d.setPaint(paint);
+            g2d.fillOval(drawX - 8, drawY - 8, size + 16, size + 16);
+            
+            // Lõi đen ma thuật (Dark Core)
+            g2d.setColor(new Color(20, 0, 30));
+            g2d.fillOval(drawX + size/4, drawY + size/4, size/2, size/2);
+
+            g2d.dispose();
         } else if (isHellfire) {
+
             g.setColor(Color.MAGENTA);
             g.fillOval(drawX, drawY, size + 8, size + 8);
             g.setColor(Color.WHITE);

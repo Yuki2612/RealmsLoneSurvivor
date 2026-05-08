@@ -18,7 +18,7 @@ public class GameOverState implements State {
     private final List<String> upgradeLines;
     private final String characterName;
     private long startTime;
-    private final long inputDelay = 800; // 0.8s cooldown
+    private final long inputDelay = 0; // No cooldown
 
     public GameOverState(int score, int wave, String weaponName, Player player, List<PassiveSkill> activeSkills) {
         this.score = score;

@@ -17,7 +17,7 @@ public class VictoryState implements State {
     private final List<String> upgradeLines;
     private final String characterName;
     private long startTime;
-    private final long inputDelay = 1000; // 1.0s cooldown
+    private final long inputDelay = 0; // No cooldown
 
     public VictoryState(int score, int wave, int surviveTime, String weaponName, Player player, List<PassiveSkill> activeSkills) {
         this.score = score;
@@ -99,7 +99,7 @@ public class VictoryState implements State {
         // --- SUBTITLE ---
         g2d.setFont(FontManager.getFont(24f));
         g2d.setColor(new Color(255, 230, 150));
-        String sub = "The King has fallen. The realm is safe... for now.";
+        String sub = "The Phantom Warlock is defeated. The dark magic fades... for now.";
         int subW = g2d.getFontMetrics().stringWidth(sub);
         g2d.drawString(sub, cx - subW / 2, cy - 180);
 

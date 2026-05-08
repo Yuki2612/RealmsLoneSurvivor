@@ -38,9 +38,13 @@ public class ExplosiveBulletsSkill implements PassiveSkill {
             // Sát thương bằng khoảng 10% damage của người chơi + level bonus
             int baseDamage = (int) (gameproject.GamePanel.instance.upgradeManager.playerDamage * (0.10f + (level * 0.05f)) * soulMulti);
             float radius = 40 + (level * 15);
+
+            // Dùng vị trí enemy để vụ nổ xuất hiện đúng chỗ (fix bug railgun)
+            float explosionX = e.getX() + e.getSize() / 2f;
+            float explosionY = e.getY() + e.getSize() / 2f;
             
             // Tạo vụ nổ
-            vfxManager.addExplosion(p.getX(), p.getY(), radius, currentTime);
+            vfxManager.addExplosion(explosionX, explosionY, radius, currentTime);
             gameproject.SoundManager.play("explosion");
             lastExplosionTime = currentTime;
 
@@ -50,8 +54,8 @@ public class ExplosiveBulletsSkill implements PassiveSkill {
                 for (Enemy enemy : enemies) {
                     if (enemy == null || enemy.isDead()) continue;
                     
-                    float dx = (enemy.getX() + enemy.getSize() / 2f) - p.getX();
-                    float dy = (enemy.getY() + enemy.getSize() / 2f) - p.getY();
+                    float dx = (enemy.getX() + enemy.getSize() / 2f) - explosionX;
+                    float dy = (enemy.getY() + enemy.getSize() / 2f) - explosionY;
                     float distSq = dx * dx + dy * dy;
                     
                     if (distSq < radius * radius) {

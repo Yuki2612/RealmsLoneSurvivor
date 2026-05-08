@@ -8,8 +8,13 @@ public class FontManager {
 
     public static void load(String path) {
         try {
-            // Nạp file TTF và tạo Font gốc
-            baseFont = Font.createFont(Font.TRUETYPE_FONT, new File(path));
+            File fontFile = new File(path);
+            // Nếu không tìm thấy ở res/, thử tìm ở app/res/ (trường hợp chạy từ root của project đa module)
+            if (!fontFile.exists() && !path.startsWith("app/")) {
+                fontFile = new File("app/" + path);
+            }
+            
+            baseFont = Font.createFont(Font.TRUETYPE_FONT, fontFile);
         } catch (Exception e) {
             System.err.println("LỖI: Không tải được Font. Sẽ dùng Arial làm dự phòng. Lỗi: " + path);
             baseFont = new Font("Arial", Font.BOLD, 20);

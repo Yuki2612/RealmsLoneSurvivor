@@ -90,14 +90,14 @@ public class GuideUI {
                     startY + lineH * 4);
 
             g.setColor(new Color(150, 255, 255));
-            g.drawString("RAILGUN (Evolved Assault Rifle)", startX, startY + lineH * 6);
+            g.drawString("RAILGUN (Evolved Sniper Rifle)", startX, startY + lineH * 6);
             g.setColor(Color.WHITE);
-            g.drawString("Req: Assault Rifle + Optical Scope Upgrade (Lv.3)", startX, startY + lineH * 7);
+            g.drawString("Req: Sniper Rifle + Optical Scope Upgrade (Lv.3)", startX, startY + lineH * 7);
 
             g.setColor(new Color(200, 150, 255));
-            g.drawString("LIGHTNING GUN (Evolved SMG)", startX, startY + lineH * 9);
+            g.drawString("LIGHTNING GUN (Evolved Assault Rifle)", startX, startY + lineH * 9);
             g.setColor(Color.WHITE);
-            g.drawString("Req: SMG + Fire Rate Upgrade (Lv.3) + Chain Lightning Skill (Lv.1)", startX,
+            g.drawString("Req: Assault Rifle + Fire Rate Upgrade (Lv.3) + Chain Lightning Skill (Lv.1)", startX,
                     startY + lineH * 10);
 
             g.setColor(Color.LIGHT_GRAY);

@@ -38,8 +38,8 @@ java {
 application {
     // Define the main class for the application.
     mainClass = 'gameproject.App'
-    // Truyền thư mục làm việc là gốc project để đường dẫn app/res/ hoạt động đúng
-    applicationDefaultJvmArgs = ["-Duser.dir=${rootProject.projectDir}"]
+    // Đặt thư mục làm việc là 'app' để đường dẫn 'res/' hoạt động thống nhất cả khi dev và khi đóng gói
+    applicationDefaultJvmArgs = ["-Duser.dir=${projectDir}"]
 }
 
 tasks.named('test') {

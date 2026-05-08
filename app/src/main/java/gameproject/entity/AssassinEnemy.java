@@ -28,7 +28,7 @@ public class AssassinEnemy extends Enemy {
                 this.maxHp = 10;
                 this.baseSpeed = 1.5f;
                 this.invisCooldown = 300;
-            } // 5s cooldown
+            }
             case 2 -> {
                 this.maxHp = 15;
                 this.baseSpeed = 1.8f;
@@ -54,34 +54,31 @@ public class AssassinEnemy extends Enemy {
         this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.08f));
         this.hp = this.maxHp;
         this.speed = this.baseSpeed;
-        this.invisTimer = rand.nextInt(60); // Bắt đầu đếm ngược tàng hình
+        this.invisTimer = rand.nextInt(60);
     }
 
     @Override
     public void update(float playerX, float playerY, float speedMultiplier, ArrayList<Enemy> allEnemies, int screenW,
             int screenH, gameproject.GamePanel panel) {
-        // Logic tàng hình
         if (isInvisible) {
             invisTimer--;
             if (invisTimer <= 0) {
                 isInvisible = false;
-                speed = baseSpeed; // Phục hồi tốc độ
-                invisTimer = invisCooldown; // Chờ lần tàng hình tiếp theo
+                speed = baseSpeed;
+                invisTimer = invisCooldown;
             }
         } else {
             invisTimer--;
             if (invisTimer <= 0) {
                 isInvisible = true;
-                speed = baseSpeed * 1.4f; // Tăng 80% tốc độ khi tàng hình
-                invisTimer = 45 + (tier * 2); // Thời gian tàng hình tăng theo tier (1s -> 1.5s)
+                speed = baseSpeed * 1.6f;
+                invisTimer = 45 + (tier * 2);
             }
         }
 
-        // Sử dụng bộ não AI tập trung để xử lý di chuyển và va chạm (Sliding Collision)
         EnemyController.moveEnemy(this, panel, speedMultiplier);
     }
 
-    // Ghi đè takeDamage: Kháng 100% sát thương đạn khi đang tàng hình
     @Override
     public void takeDamage(int damage, boolean isCrit, gameproject.VFXManager vfxManager, long currentTime) {
         if (!isInvisible) {
@@ -97,13 +94,9 @@ public class AssassinEnemy extends Enemy {
     @Override
     public void draw(Graphics g) {
         if (isInvisible) {
-            // V\u1ebd th\u1ee7 c\u00f4ng \u0111\u1ec3 tr\u00e1nh xung \u0111\u1ed9t
-            // composite v\u1edbi drawSprite()
-            // drawSprite() ghi \u0111\u00e8 alpha v\u1ec1 1.0f n\u1ebfu kh\u00f4ng isDying
-            // \u2014 n\u00ean ta b\u1ecf qua n\u00f3
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-            java.awt.image.BufferedImage img = gameproject.ImageManager.get("enemy" + tier);
+            java.awt.image.BufferedImage img = gameproject.ImageManager.get("enemy_assassin");
             if (img != null) {
                 g2d.drawImage(img, (int) x - 10, (int) y - 20, size + 20, size + 20, null);
             } else {
@@ -111,14 +104,9 @@ public class AssassinEnemy extends Enemy {
                 g2d.fillRect((int) x, (int) y, size, size);
             }
             g2d.dispose();
-            // Kh\u00f4ng v\u1ebd HP bar v\u00e0 ch\u1ea5m \u0111en khi t\u00e0ng h\u00ecnh
-            // \u2014 \u1ea9n ho\u00e0n to\u00e0n
         } else {
-            drawSprite(g, "enemy" + tier);
-            // Ch\u1ea5m \u0111en nh\u1eadn di\u1ec7n \u2014 ch\u1ec9 hi\u1ec7n khi
-            // kh\u00f4ng t\u00e0ng h\u00ecnh
-            g.setColor(Color.BLACK);
-            g.fillOval((int) x + size / 2 - 4, (int) y - 12, 8, 8);
+            // Sử dụng ảnh assassin cho tất cả các tier, không vẽ chấm màu
+            drawSprite(g, "enemy_assassin");
         }
     }
 }

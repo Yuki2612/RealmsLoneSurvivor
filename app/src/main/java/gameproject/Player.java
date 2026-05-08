@@ -131,7 +131,7 @@ public class Player implements Renderable {
             } else {
                 float nextX = x + dashDirX * DASH_SPEED;
                 float nextY = y + dashDirY * DASH_SPEED;
-                
+
                 // Sử dụng hitbox chân (Footprint) để va chạm mượt hơn
                 int footW = 16;
                 int footH = 10;
@@ -148,14 +148,14 @@ public class Player implements Renderable {
             }
         } else {
             float currentDirX = 0, currentDirY = 0;
-            
+
             // Tính toán tốc độ hiện tại (Speed * Combo Bonus * Slow Multiplier)
             float effectiveSlow = 1.0f;
             if (gameproject.GamePanel.getTickTime() < slowEndTime) {
                 effectiveSlow = slowMultiplier;
             }
             float currentSpeed = speed * (1.0f + comboManager.getMoveSpeedBonus()) * effectiveSlow;
-            
+
             int footW = 16;
             int footH = 10;
 
@@ -314,21 +314,22 @@ public class Player implements Renderable {
     }
 
     public boolean hasShield = false;
+
     public boolean takeHit() {
         if (isInvulnerable())
             return false;
-            
+
         if (hasShield) {
             hasShield = false;
             addInvulnerability(1000); // 1s grace period
             gameproject.SoundManager.play("shield");
             return false;
         }
-        
+
         hearts--;
-        
+
         // Phát âm thanh bị thương ngẫu nhiên (1-3)
-        int randHurt = 1 + (int)(Math.random() * 3);
+        int randHurt = 1 + (int) (Math.random() * 3);
         SoundManager.play("playerhurt" + randHurt);
 
         invulnerableUntil = gameproject.GamePanel.getTickTime() + 1000;
@@ -337,10 +338,11 @@ public class Player implements Renderable {
 
     public boolean takeDamage(int amount) {
         // Boss hoặc môi trường gây sát thương trực tiếp
-        if (isInvulnerable()) return false;
-        
+        if (isInvulnerable())
+            return false;
+
         // Hiện tại mỗi lần dính chiêu Boss trừ 1 tim (theo yêu cầu mới)
-        return takeHit(); 
+        return takeHit();
     }
 
     public void applySlow(float multiplier, long duration) {
@@ -398,6 +400,14 @@ public class Player implements Renderable {
 
     public float getY() {
         return y;
+    }
+
+    public boolean isFacingRight() {
+        return facingRight;
+    }
+
+    public Animation getActiveAnim() {
+        return activeAnim;
     }
 
     public boolean isDashing() {

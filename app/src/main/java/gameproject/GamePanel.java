@@ -89,6 +89,12 @@ public class GamePanel extends JPanel implements Runnable {
         }
     }
 
+    public static void resetTime() {
+        isPaused = false;
+        totalPausedTime = 0;
+        pauseStartTime = 0;
+    }
+
     public GamePanel() {
         instance = this;
         setPreferredSize(new Dimension(screenWidth, screenHeight));
@@ -168,6 +174,16 @@ public class GamePanel extends JPanel implements Runnable {
             ImageManager.loadAnimation(bKey + "_dash", "app/res/" + bKey + "_dash.png");
             ImageManager.loadAnimation(bKey + "_death", "app/res/" + bKey + "_death.png");
         }
+        // Boss 4 - Dark Fairy (có 2 phase, animation riêng cho mỗi phase)
+        ImageManager.loadAnimation("boss4_move", "app/res/boss4_move.png");
+        ImageManager.loadAnimation("boss4_cast", "app/res/boss4_cast.png");
+        ImageManager.loadAnimation("boss4_death", "app/res/boss4_death.png");
+        ImageManager.loadAnimation("boss4_move2", "app/res/boss4_move2.png");
+        ImageManager.loadAnimation("boss4_cast2", "app/res/boss4_cast2.png");
+        ImageManager.loadAnimation("boss4_teleport", "app/res/boss4_teleport.png");
+        ImageManager.loadAnimation("boss4_transform", "app/res/boss4_transform.png");
+
+
         ImageManager.load("chest1", "app/res/chest1.png");
         ImageManager.load("chest2", "app/res/chest2.png");
         ImageManager.load("gold", "app/res/gold.png");
@@ -181,6 +197,13 @@ public class GamePanel extends JPanel implements Runnable {
         ImageManager.load("treasure", "app/res/treasure.png");
         ImageManager.load("mimic", "app/res/mimic.png");
         ImageManager.load("boss_hud", "app/res/boss_hud.png");
+        ImageManager.load("enemy_wizard", "app/res/enemy_wizard.png");
+        ImageManager.load("enemy_assassin", "app/res/enemy_assassin.png");
+        ImageManager.load("enemy_shooter", "app/res/enemy_shooter.png");
+        
+        ImageManager.load("shotgun", "app/res/shotgun.png");
+        ImageManager.load("sniper_rifle", "app/res/sniper_rifle.png");
+        ImageManager.load("assault_rifle", "app/res/assault_rifle.png");
 
         // Load Skill Icons
         for (gameproject.skill.Upgrade u : gameproject.skill.Upgrade.values()) {
@@ -242,6 +265,7 @@ public class GamePanel extends JPanel implements Runnable {
     }
 
     public void startNewGame() {
+        resetTime();
         gameproject.state.PlayingState.resetEvents();
         CharacterClass charClass = PlayerData.selectedClass;
 
@@ -253,6 +277,8 @@ public class GamePanel extends JPanel implements Runnable {
         }
 
         player = new Player(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, charClass);
+        cameraX = player.getX() - screenWidth / 2f;
+        cameraY = player.getY() - screenHeight / 2f;
         score = 0;
         activeSkills.clear();
         currentWeapon = new Pistol();

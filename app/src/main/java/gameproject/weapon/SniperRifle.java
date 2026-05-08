@@ -3,19 +3,15 @@ package gameproject.weapon;
 import gameproject.*;
 import java.util.ArrayList;
 
-public class SMG extends Weapon {
-    public SMG() {
-        super("SMG", 0.45f, 150, true, 250f);
+public class SniperRifle extends Weapon {
+    public SniperRifle() {
+        super("Sniper Rifle", 1.7f, 600, false, 650f);
     }
 
     @Override
     public void shoot(float startX, float startY, float targetX, float targetY,
             int playerDamage, int bounces, ArrayList<Projectile> projectiles, long currentTime) {
-        float spreadX = (float) (Math.random() * 40 - 20);
-        float spreadY = (float) (Math.random() * 40 - 20);
-
-        Projectile p = new Projectile(startX, startY, targetX + spreadX, targetY + spreadY, 1.2f,
-                range);
+        Projectile p = new Projectile(startX, startY, targetX, targetY, 1.5f, range);
         p.damage = Math.max(1, (int) (playerDamage * this.damageMultiplier));
         p.bouncesLeft = bounces;
         projectiles.add(p);

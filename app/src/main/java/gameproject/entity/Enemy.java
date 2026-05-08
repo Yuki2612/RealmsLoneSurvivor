@@ -33,6 +33,7 @@ public abstract class Enemy implements gameproject.Renderable {
     public float kbX = 0, kbY = 0;
 
     public boolean isBoss = false;
+    public boolean movingRight = true;
 
     public long burnEndTime = 0;
     public long chillEndTime = 0;
@@ -258,6 +259,10 @@ public abstract class Enemy implements gameproject.Renderable {
         return maxHp;
     }
 
+    public int getExpValue() {
+        return maxHp;
+    }
+
     public Rectangle getBounds() {
         return new Rectangle((int) x, (int) y, size, size);
     }
@@ -289,7 +294,12 @@ public abstract class Enemy implements gameproject.Renderable {
                 g2d.fillOval((int) x - 5, (int) y + size - 10, size + 10, 15);
             }
 
-            g2d.drawImage(img, drawX, drawY, drawW, drawH, null);
+            if (movingRight) {
+                g2d.drawImage(img, drawX, drawY, drawW, drawH, null);
+            } else {
+                // Flip image: draw with negative width and adjusted X
+                g2d.drawImage(img, drawX + drawW, drawY, -drawW, drawH, null);
+            }
 
             // Hit flash: vẽ lớp trắng bán trong suốt lên trên sprite
             if (now < hitFlashEndTime) {
