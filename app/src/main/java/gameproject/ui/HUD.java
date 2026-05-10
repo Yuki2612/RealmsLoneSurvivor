@@ -22,7 +22,7 @@ public class HUD {
         int score = game.score;
         int waveCount = game.entityManager.waveCount;
         int playerDamage = game.upgradeManager.playerDamage;
-        long actualCooldown = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus());
+        long actualCooldown = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus(), player.getFrenzyFireRateBonus());
         float shotsPerSec = 1000.0f / actualCooldown;
         int dps = (int) (playerDamage * game.currentWeapon.damageMultiplier * game.currentWeapon.getProjectilesPerShot()
                 * shotsPerSec);

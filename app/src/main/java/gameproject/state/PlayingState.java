@@ -3,17 +3,11 @@ package gameproject.state;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Color;
-import java.awt.Rectangle;
 import gameproject.GamePanel;
-import gameproject.ImageManager;
 import gameproject.SoundManager;
-import gameproject.ui.HUD;
 import gameproject.ui.CharacterStatsUI;
 import gameproject.skill.Upgrade;
 import gameproject.skill.PassiveSkill;
-import gameproject.skill.FrostAuraSkill;
-import gameproject.skill.PoisonCloudSkill;
-import gameproject.skill.OrbitingOrbsSkill;
 import gameproject.environment.Building;
 
 public class PlayingState implements State {
@@ -40,10 +34,30 @@ public class PlayingState implements State {
         nextPhaseTime = 0;
         lastCheckedWave = 0;
         lastDamageTick = 0;
+        phantomClonesHit = 0;
     }
 
     private boolean showStats = false;
     private boolean iKeyPrev = false;
+    private boolean lostHealthThisRun = false;
+    private int lastHearts = -1;
+    private long clutchSurvivalStart = -1;
+    private static final long CLUTCH_SURVIVAL_NEEDED = 300000; // 5 mins in ms
+    private boolean clutchAchieved = false;
+
+    // --- NEW ACHIEVEMENT TRACKING ---
+    private boolean usedDashThisRun = false;
+    public static int phantomClonesHit = 0; // Static to access from PhantomWarlock
+    private float lastPlayerX = -1, lastPlayerY = -1;
+    private int goldAtStart = -1;
+    private java.util.Set<Integer> visitedBuildings = new java.util.HashSet<>();
+    private long buildingStayStart = -1;
+    private long totalBuildingTime = 0;
+    private int damageTakenThisWave = 0;
+    private int bulletsShotThisWave = 0;
+    private int noHitWaveStreak = 0;
+    private int noShootWaveStreak = 0;
+    private int currentWaveCheck = 0;
 
     @Override
     public void update(GamePanel game) {
@@ -78,6 +92,69 @@ public class PlayingState implements State {
         long currentTime = gameproject.GamePanel.getTickTime();
         int surviveTimeSeconds = (int) ((currentTime - game.startTime) / 1000);
         game.surviveTimeSeconds = surviveTimeSeconds;
+
+        // Init starting stats
+        if (goldAtStart == -1)
+            goldAtStart = gameproject.meta.PlayerData.gold;
+        if (lastPlayerX == -1) {
+            lastPlayerX = game.player.getX();
+            lastPlayerY = game.player.getY();
+        }
+
+        // Track Distance
+        float dx = game.player.getX() - lastPlayerX;
+        float dy = game.player.getY() - lastPlayerY;
+        float dist = (float) Math.sqrt(dx * dx + dy * dy);
+        if (dist > 0 && dist < 100) { // Filter teleport/respawn
+            gameproject.meta.AchievementManager.getInstance().updateDistance(dist);
+            lastPlayerX = game.player.getX();
+            lastPlayerY = game.player.getY();
+        }
+
+        // Track Wealth (In Run)
+        int currentGoldInRun = gameproject.meta.PlayerData.gold - goldAtStart;
+        gameproject.meta.AchievementManager.getInstance().onStatChanged("wealth", currentGoldInRun, "gold");
+
+        // Track Dash
+        if (game.player.isDashing())
+            usedDashThisRun = true;
+
+        // Track Buildings
+        boolean inside = false;
+        synchronized (game.buildings) {
+            for (int i = 0; i < game.buildings.size(); i++) {
+                if (game.buildings.get(i).isPlayerInside()) {
+                    inside = true;
+                    visitedBuildings.add(i);
+                    break;
+                }
+            }
+        }
+        if (inside) {
+            if (buildingStayStart == -1)
+                buildingStayStart = currentTime;
+            else {
+                long duration = currentTime - buildingStayStart;
+                totalBuildingTime += duration;
+                gameproject.meta.AchievementManager.getInstance().onStatChanged("explorer",
+                        (int) (totalBuildingTime / 60000), "homebody");
+                buildingStayStart = currentTime;
+            }
+        } else {
+            buildingStayStart = -1;
+        }
+        if (visitedBuildings.size() >= game.buildings.size() && game.buildings.size() > 0) {
+            gameproject.meta.AchievementManager.getInstance().onStatChanged("explorer", 1, "architect");
+        }
+
+        // Track Combo
+        int combo = game.player.getComboManager().getComboCount();
+        gameproject.meta.AchievementManager.getInstance().onStatChanged("combat", combo, "combo");
+
+        // Track Phantom Clones
+        if (phantomClonesHit >= 10) {
+            gameproject.meta.AchievementManager.getInstance().onStatChanged("secret", 1, "phantom_troll");
+        }
 
         handleEvents(game, currentTime);
 
@@ -117,13 +194,12 @@ public class PlayingState implements State {
             }
             if (currentFrame != null) {
                 game.vfxManager.addDashAfterimage(
-                    game.player.getX() - 10, 
-                    game.player.getY() - 20, 
-                    dSize, dSize, 
-                    currentTime, 
-                    currentFrame, 
-                    game.player.isFacingRight()
-                );
+                        game.player.getX() - 10,
+                        game.player.getY() - 20,
+                        dSize, dSize,
+                        currentTime,
+                        currentFrame,
+                        game.player.isFacingRight());
             }
         }
 
@@ -131,12 +207,39 @@ public class PlayingState implements State {
                 currentTime, surviveTimeSeconds, game);
 
         float fireRateBonus = game.player.getComboManager().getFireRateBonus();
+        float frenzyBonus = game.player.getFrenzyFireRateBonus();
         if (game.input.isMouseHolding && game.currentWeapon.isAutomatic
-                && game.currentWeapon.canShoot(currentTime, fireRateBonus)) {
+                && game.currentWeapon.canShoot(currentTime, fireRateBonus, frenzyBonus)) {
             triggerShoot(game, currentTime);
         } else if (game.input.mouseClicked && !game.currentWeapon.isAutomatic
-                && game.currentWeapon.canShoot(currentTime, fireRateBonus)) {
+                && game.currentWeapon.canShoot(currentTime, fireRateBonus, frenzyBonus)) {
             triggerShoot(game, currentTime);
+        }
+
+        // Tích hợp Thành tựu
+        gameproject.meta.AchievementManager.getInstance().updateSurvivalTime(surviveTimeSeconds);
+
+        if (lastHearts == -1)
+            lastHearts = game.player.getHearts();
+        if (game.player.getHearts() < lastHearts) {
+            lostHealthThisRun = true;
+            int damage = lastHearts - game.player.getHearts();
+            if (damage > 0)
+                damageTakenThisWave += damage;
+            clutchSurvivalStart = -1; // Reset clutch timer on damage
+        }
+        lastHearts = game.player.getHearts();
+
+        // Check Clutch Survivor (Survive 5 mins with 1 HP)
+        if (!clutchAchieved && game.player.getHearts() == 1) {
+            if (clutchSurvivalStart == -1) {
+                clutchSurvivalStart = currentTime;
+            } else if (currentTime - clutchSurvivalStart >= CLUTCH_SURVIVAL_NEEDED) {
+                gameproject.meta.AchievementManager.getInstance().onClutchSurvived();
+                clutchAchieved = true;
+            }
+        } else {
+            clutchSurvivalStart = -1;
         }
 
         if (game.upgradeManager.processLevelUp(game.player)) {
@@ -153,6 +256,38 @@ public class PlayingState implements State {
                 b.update(game.player);
             }
         }
+
+        // --- KIỂM TRA WAVE TRANSITION (Thành tựu Genre) ---
+        if (game.entityManager.waveCount > currentWaveCheck) {
+            // Wave transition! Check previous wave stats.
+            if (currentWaveCheck > 0) {
+                if (damageTakenThisWave == 0) {
+                    noHitWaveStreak++;
+                    gameproject.meta.AchievementManager.getInstance().onStatChanged("combat", noHitWaveStreak,
+                            "flawless");
+                } else {
+                    noHitWaveStreak = 0;
+                }
+
+                if (bulletsShotThisWave == 0) {
+                    noShootWaveStreak++;
+                    gameproject.meta.AchievementManager.getInstance().onStatChanged("combat", noShootWaveStreak,
+                            "pacifist");
+                } else {
+                    noShootWaveStreak = 0;
+                }
+            }
+            currentWaveCheck = game.entityManager.waveCount;
+            damageTakenThisWave = 0;
+            bulletsShotThisWave = 0;
+        }
+
+        // --- KIỂM TRA CHIẾN THẮNG ---
+        if (game.entityManager.waveCount >= gameproject.entity.EntityManager.FINAL_WAVE
+                && game.entityManager.enemies.isEmpty()) {
+            game.triggerVictory(!lostHealthThisRun, !usedDashThisRun);
+        }
+
         // --- KIỂM TRA GAME OVER ---
         if (game.player.getHearts() <= 0) {
             game.triggerGameOver();
@@ -202,6 +337,8 @@ public class PlayingState implements State {
                             }
                         }
                         game.vfxManager.showWaveBanner("THE REMAINING CHESTS AWAKEN!", Color.RED, currentTime);
+                        // Trigger "Trust Issues" achievement
+                        gameproject.meta.AchievementManager.getInstance().onEventMet("mimic_mania");
                     }
                     return;
                 } else {
@@ -248,6 +385,14 @@ public class PlayingState implements State {
                         startMsg = "THE BLOOD MOON RISES!";
 
                     game.vfxManager.showWaveBanner(startMsg, Color.RED, currentTime);
+
+                    // Trigger Achievements for normal events when 10s warning ends
+                    if (activeEvent == EventType.ACID_RAIN)
+                        gameproject.meta.AchievementManager.getInstance().onEventMet("acid_rain");
+                    else if (activeEvent == EventType.DARKNESS)
+                        gameproject.meta.AchievementManager.getInstance().onEventMet("darkness");
+                    else if (activeEvent == EventType.BLOOD_MOON)
+                        gameproject.meta.AchievementManager.getInstance().onEventMet("blood_moon");
                 }
             } else if (eventPhase == EventPhase.ACTIVE) {
                 if (activeEvent == EventType.ACID_RAIN) {
@@ -267,6 +412,8 @@ public class PlayingState implements State {
                             if (game.player.takeHit()) {
                                 game.triggerGameOver();
                             } else if (game.player.getHearts() < oldHearts) {
+                                lostHealthThisRun = true;
+                                clutchSurvivalStart = -1; // Reset clutch timer on damage
                                 game.vfxManager.triggerPlayerDamageFlash(currentTime);
                             }
                         }
@@ -295,6 +442,8 @@ public class PlayingState implements State {
             game.currentWeapon.shoot(game.player.getX(), game.player.getY(), worldMouseX, worldMouseY,
                     game.upgradeManager.playerDamage, bouncesAndPierces, game.entityManager.projectiles,
                     currentTime);
+
+            bulletsShotThisWave += (game.entityManager.projectiles.size() - prevSize);
 
             // Gán flag isCrit cho tất cả đạn vừa được thêm
             if (isCrit) {

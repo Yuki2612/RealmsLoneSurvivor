@@ -62,9 +62,10 @@ public class MenuUI {
         drawMenuButton(g2d, btnX, startY, btnW, btnH, "START GAME", mouseX, mouseY);
         drawMenuButton(g2d, btnX, startY + spacing, btnW, btnH, "CHARACTER STATS", mouseX, mouseY);
         drawMenuButton(g2d, btnX, startY + spacing * 2, btnW, btnH, "SKILLS", mouseX, mouseY);
-        drawMenuButton(g2d, btnX, startY + spacing * 3, btnW, btnH, "SETTINGS", mouseX, mouseY);
-        drawMenuButton(g2d, btnX, startY + spacing * 4, btnW, btnH, "SURVIVAL GUIDE", mouseX, mouseY);
-        drawMenuButton(g2d, btnX, startY + spacing * 5, btnW, btnH, "EXIT TO DESKTOP", mouseX, mouseY);
+        drawMenuButton(g2d, btnX, startY + spacing * 3, btnW, btnH, "ACHIEVEMENTS", mouseX, mouseY);
+        drawMenuButton(g2d, btnX, startY + spacing * 4, btnW, btnH, "SETTINGS", mouseX, mouseY);
+        drawMenuButton(g2d, btnX, startY + spacing * 5, btnW, btnH, "SURVIVAL GUIDE", mouseX, mouseY);
+        drawMenuButton(g2d, btnX, startY + spacing * 6, btnW, btnH, "EXIT TO DESKTOP", mouseX, mouseY);
     }
 
     private static void drawEnhancedTitle(Graphics2D g2d, int screenWidth, int screenHeight, float osc) {

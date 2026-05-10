@@ -124,6 +124,7 @@ public class GamePanel extends JPanel implements Runnable {
         SoundManager.load("laser", "app/res/laser.wav");
         SoundManager.load("shield", "app/res/shield.wav");
         SoundManager.load("pickup", "app/res/pickup.wav");
+        SoundManager.load("achievement", "app/res/achievement.wav");
 
         // Load player hurt sounds (giả định có 3 file)
         for (int i = 1; i <= 3; i++) {
@@ -305,13 +306,15 @@ public class GamePanel extends JPanel implements Runnable {
         changeState(new gameproject.state.PlayingState());
     }
 
-    public void triggerVictory() {
+    public void triggerVictory(boolean noHit, boolean noDash) {
         PlayerData.save();
+        gameproject.meta.AchievementManager.getInstance().onVictory(surviveTimeSeconds, noHit, noDash);
         changeState(new VictoryState(score, entityManager.waveCount, surviveTimeSeconds, currentWeapon.name, player, activeSkills));
     }
 
     public void triggerGameOver() {
         PlayerData.save();
+        gameproject.meta.AchievementManager.getInstance().addDeath();
         changeState(new GameOverState(score, entityManager.waveCount, currentWeapon.name, player, activeSkills));
     }
 
@@ -367,6 +370,9 @@ public class GamePanel extends JPanel implements Runnable {
                     frameCount = 0;
                     lastFPSCheck = System.currentTimeMillis();
                 }
+
+                // Cập nhật Thành tựu toàn cục (cho Popup thông báo)
+                gameproject.meta.AchievementManager.getInstance().update(System.currentTimeMillis());
             }
         }
     }
@@ -377,5 +383,8 @@ public class GamePanel extends JPanel implements Runnable {
         if (currentState != null) {
             currentState.render(this, g);
         }
+        
+        // Vẽ thông báo Thành tựu ở lớp trên cùng của mọi màn hình
+        gameproject.meta.AchievementManager.getInstance().drawToast(g, screenWidth, screenHeight);
     }
 }

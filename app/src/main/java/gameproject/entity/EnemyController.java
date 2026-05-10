@@ -24,6 +24,31 @@ public class EnemyController {
             return;
 
         float currentSpeed = enemy.speed * speedMultiplier;
+        
+        // --- Xử lý Affix Elite ---
+        if (enemy.isElite) {
+            // 1. BERSERKER: Tăng tốc cực mạnh khi thấp máu (<30%)
+            if (enemy.eliteAffix == Enemy.EliteAffix.BERSERKER && enemy.hp < enemy.maxHp * 0.3f) {
+                currentSpeed *= 2.5f;
+            }
+            
+            // 2. VAMPIRIC: Hồi máu khi chạm người chơi
+            if (enemy.eliteAffix == Enemy.EliteAffix.VAMPIRIC) {
+                float dxV = (panel.player.getX() + gameproject.Player.SIZE/2) - (enemy.x + enemy.size/2);
+                float dyV = (panel.player.getY() + gameproject.Player.SIZE/2) - (enemy.y + enemy.size/2);
+                float distSqV = dxV*dxV + dyV*dyV;
+                float touchDist = (enemy.size + gameproject.Player.SIZE) * 0.45f;
+                if (distSqV < touchDist * touchDist) {
+                    long now = GamePanel.getTickTime();
+                    if (now - enemy.lastVampireHealTime > 1000) {
+                        int healAmount = (int)(enemy.maxHp * 0.15f);
+                        enemy.hp = Math.min(enemy.maxHp, enemy.hp + healAmount);
+                        panel.vfxManager.addDamageText(enemy.x + 15, enemy.y - 10, healAmount, now, java.awt.Color.GREEN);
+                        enemy.lastVampireHealTime = now;
+                    }
+                }
+            }
+        }
 
         // 1. LẤY HƯỚNG TỪ FLOW FIELD
         Rectangle bounds = enemy.getPhysicsHitbox();

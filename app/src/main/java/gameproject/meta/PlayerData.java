@@ -24,7 +24,14 @@ public class PlayerData {
     public static int statSpeedLevel = 0; // +2% speed per level
     public static int statDashLevel = 0; // -2% cooldown per level
     public static int statCritLevel = 0; // +1% crit per level
-    public static int statCooldownLevel = 0; // -2% weapon cooldown per level
+    public static int statCooldownLevel = 0; // -1% weapon cooldown per level
+
+    // Evolution Stats (5 levels each)
+    public static int evoVampirism = 0;     // Life on Kill
+    public static int evoBloodlust = 0;     // Crit Multiplier
+    public static int evoPhantomDash = 0;   // Explosive Illusion
+    public static int evoBerserker = 0;     // Speed boost on damage
+    public static int evoFrenzy = 0;        // Fire rate on Crit
 
     public static java.util.Map<gameproject.skill.Upgrade, Integer> skillSoulLevels = new java.util.HashMap<>();
 
@@ -84,6 +91,13 @@ public class PlayerData {
                     statDashLevel = Integer.parseInt(stats[3]);
                     statCritLevel = Integer.parseInt(stats[4]);
                     statCooldownLevel = Integer.parseInt(stats[5]);
+                    if (stats.length >= 10) {
+                        evoVampirism = Integer.parseInt(stats[6]);
+                        evoBloodlust = Integer.parseInt(stats[7]);
+                        evoPhantomDash = Integer.parseInt(stats[8]);
+                        evoBerserker = Integer.parseInt(stats[9]);
+                        if (stats.length >= 11) evoFrenzy = Integer.parseInt(stats[10]);
+                    }
                 }
             }
             
@@ -132,7 +146,10 @@ public class PlayerData {
             
             sb.append("Stats:").append(statHealthLevel).append(",").append(statDamageLevel).append(",")
               .append(statSpeedLevel).append(",").append(statDashLevel).append(",")
-              .append(statCritLevel).append(",").append(statCooldownLevel).append("\n");
+              .append(statCritLevel).append(",").append(statCooldownLevel).append(",")
+              .append(evoVampirism).append(",").append(evoBloodlust).append(",")
+              .append(evoPhantomDash).append(",").append(evoBerserker).append(",")
+              .append(evoFrenzy).append("\n");
             
             StringBuilder sbSkills = new StringBuilder();
             for (java.util.Map.Entry<gameproject.skill.Upgrade, Integer> entry : skillSoulLevels.entrySet()) {
@@ -153,6 +170,36 @@ public class PlayerData {
         } catch (Exception e) {
             System.out.println("Error saving or encrypting file: " + e.getMessage());
         }
+    }
+
+    public static void reset() {
+        gold = 2000;
+        soulStones = 20;
+        statHealthLevel = 0;
+        statDamageLevel = 0;
+        statSpeedLevel = 0;
+        statDashLevel = 0;
+        statCritLevel = 0;
+        statCooldownLevel = 0;
+        evoVampirism = 0;
+        evoBloodlust = 0;
+        evoPhantomDash = 0;
+        evoBerserker = 0;
+        evoFrenzy = 0;
+        skillSoulLevels.clear();
+        debugStartWave = 1;
+        debugStartLevel = 1;
+        unlockedClasses.clear();
+        unlockedClasses.add(CharacterClass.YUKI);
+        unlockedSkills.clear();
+        unlockedSkills.add(gameproject.skill.Upgrade.CHAIN_LIGHTNING);
+        unlockedSkills.add(gameproject.skill.Upgrade.TRAIL_OF_FIRE);
+        unlockedSkills.add(gameproject.skill.Upgrade.ORBITING_ORBS);
+        unlockedSkills.add(gameproject.skill.Upgrade.EXPLOSIVE_BULLETS);
+        unlockedSkills.add(gameproject.skill.Upgrade.FROST_AURA);
+        unlockedSkills.add(gameproject.skill.Upgrade.POISON_CLOUD);
+        selectedClass = CharacterClass.YUKI;
+        save();
     }
 
     private static final String CRYPTO_KEY = "pixel_survivor_2026_secret_key_v1";

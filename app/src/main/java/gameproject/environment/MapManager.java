@@ -315,6 +315,7 @@ public class MapManager {
                 if (grid[i][j].obstacle != null && grid[i][j].obstacle.isDestroyed()) {
                     grid[i][j].obstacle = null;
                     obstacleDestroyed = true;
+                    gameproject.meta.AchievementManager.getInstance().addDestruction();
                 }
             }
         }

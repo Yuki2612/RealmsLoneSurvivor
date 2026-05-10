@@ -35,7 +35,7 @@ public class ShadowBoss extends Enemy {
 
     public ShadowBoss(float startX, float startY, int surviveTimeSeconds) {
         // Tăng hitbox lên 55 để khớp với sprite hơn
-        super(startX, startY, 55, (int) ((625 + (surviveTimeSeconds * 8)) * 1.4), 1.8f, new Color(100, 0, 150));
+        super(startX, startY, 55, (int) ((900 + (surviveTimeSeconds * 8)) * 1.4), 1.8f, new Color(100, 0, 150));
         this.isBoss = true;
         this.deathFadeDuration = 1500;
 

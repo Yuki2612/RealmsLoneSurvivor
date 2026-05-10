@@ -25,10 +25,12 @@ public class MenuState implements State {
                 } else if (my >= startY + spacing * 2 && my <= startY + spacing * 2 + btnH) {
                     game.changeState(new SkillsState());
                 } else if (my >= startY + spacing * 3 && my <= startY + spacing * 3 + btnH) {
-                    game.changeState(new SettingsState());
+                    game.changeState(new AchievementState());
                 } else if (my >= startY + spacing * 4 && my <= startY + spacing * 4 + btnH) {
-                    game.changeState(new GuideState());
+                    game.changeState(new SettingsState());
                 } else if (my >= startY + spacing * 5 && my <= startY + spacing * 5 + btnH) {
+                    game.changeState(new GuideState());
+                } else if (my >= startY + spacing * 6 && my <= startY + spacing * 6 + btnH) {
                     gameproject.meta.PlayerData.save();
                     System.exit(0);
                 }

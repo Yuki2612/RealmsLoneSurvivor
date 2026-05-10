@@ -50,7 +50,7 @@ public class KingBoss extends Enemy {
     private static final long GROUND_VISUAL_DURATION = 600;
 
     public KingBoss(float startX, float startY, int surviveTimeSeconds) {
-        super(startX, startY, 55, (int) ((1000 + (surviveTimeSeconds * 8)) * 1.8f), 1.1f, Color.DARK_GRAY);
+        super(startX, startY, 55, (int) ((1300 + (surviveTimeSeconds * 8)) * 1.8f), 1.1f, Color.DARK_GRAY);
         this.isBoss = true;
         this.deathFadeDuration = 2000;
         this.currentSurviveTime = surviveTimeSeconds;
@@ -442,57 +442,61 @@ public class KingBoss extends Enemy {
         // 2. Vết nứt (Tự nhiên: to ở trong, nhỏ ở ngoài, uốn lượn)
         int numCracks = 3 + rand.nextInt(2); // 3-4 đường nứt chính
         double angleOffset = rand.nextDouble() * Math.PI * 2;
-        
+
         for (int i = 0; i < numCracks; i++) {
             // Phân bổ góc đều nhau để tránh các vết nứt dính sát nhau
             double angle = angleOffset + (i * (Math.PI * 2 / numCracks)) + (rand.nextDouble() - 0.5) * 0.5;
             int segments = 4 + rand.nextInt(3); // 4-6 phân đoạn
             float totalLen = 110 + rand.nextFloat() * 35; // Dài 110-145 px (Tràn ra tới viền đỏ 140px)
-            
+
             float[] ptsX = new float[segments + 1];
             float[] ptsY = new float[segments + 1];
             ptsX[0] = cx;
             ptsY[0] = cy;
-            
+
             double currentAngle = angle;
             for (int s = 1; s <= segments; s++) {
                 float segLen = totalLen / segments;
                 currentAngle += (rand.nextFloat() - 0.5f) * 1.2f; // Chệch hướng ngẫu nhiên
-                ptsX[s] = ptsX[s-1] + (float)Math.cos(currentAngle) * segLen;
-                ptsY[s] = ptsY[s-1] + (float)Math.sin(currentAngle) * segLen;
+                ptsX[s] = ptsX[s - 1] + (float) Math.cos(currentAngle) * segLen;
+                ptsY[s] = ptsY[s - 1] + (float) Math.sin(currentAngle) * segLen;
             }
 
             // Vẽ từng phân đoạn dựa trên crackProgress
-            int maxSeg = (int)(segments * crackProgress);
+            int maxSeg = (int) (segments * crackProgress);
             for (int s = 0; s < maxSeg; s++) {
                 float thickness = Math.max(1f, 7f - (s * 7f / segments));
-                
+
                 // Viền magma rực rỡ bên dưới (Nền to)
-                g2d.setStroke(new java.awt.BasicStroke(thickness + 2.5f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
-                g2d.setColor(new Color(255, 100 + (int)(80 * (1f - (float)s/segments)), 0, 200));
-                g2d.drawLine((int)ptsX[s], (int)ptsY[s], (int)ptsX[s+1], (int)ptsY[s+1]);
+                g2d.setStroke(new java.awt.BasicStroke(thickness + 2.5f, java.awt.BasicStroke.CAP_ROUND,
+                        java.awt.BasicStroke.JOIN_ROUND));
+                g2d.setColor(new Color(255, 100 + (int) (80 * (1f - (float) s / segments)), 0, 200));
+                g2d.drawLine((int) ptsX[s], (int) ptsY[s], (int) ptsX[s + 1], (int) ptsY[s + 1]);
 
                 // Lõi đen/nứt nẻ bên trên (Nét nhỏ)
-                g2d.setStroke(new java.awt.BasicStroke(Math.max(1f, thickness - 1.5f), java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+                g2d.setStroke(new java.awt.BasicStroke(Math.max(1f, thickness - 1.5f), java.awt.BasicStroke.CAP_ROUND,
+                        java.awt.BasicStroke.JOIN_ROUND));
                 g2d.setColor(new Color(15, 5, 0, 230));
-                g2d.drawLine((int)ptsX[s], (int)ptsY[s], (int)ptsX[s+1], (int)ptsY[s+1]);
-                
+                g2d.drawLine((int) ptsX[s], (int) ptsY[s], (int) ptsX[s + 1], (int) ptsY[s + 1]);
+
                 // Nứt nhánh nhỏ
                 if (s > 0 && rand.nextFloat() < 0.3f) { // Xác suất nhánh ít hơn
-                    float branchAngle = (float)currentAngle + (rand.nextBoolean() ? 0.9f : -0.9f);
+                    float branchAngle = (float) currentAngle + (rand.nextBoolean() ? 0.9f : -0.9f);
                     float branchLen = 20 + rand.nextFloat() * 25;
-                    int bx = (int)(ptsX[s] + Math.cos(branchAngle) * branchLen);
-                    int by = (int)(ptsY[s] + Math.sin(branchAngle) * branchLen);
-                    
+                    int bx = (int) (ptsX[s] + Math.cos(branchAngle) * branchLen);
+                    int by = (int) (ptsY[s] + Math.sin(branchAngle) * branchLen);
+
                     // Viền magma nhánh
-                    g2d.setStroke(new java.awt.BasicStroke(thickness + 1f, java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+                    g2d.setStroke(new java.awt.BasicStroke(thickness + 1f, java.awt.BasicStroke.CAP_ROUND,
+                            java.awt.BasicStroke.JOIN_ROUND));
                     g2d.setColor(new Color(255, 60, 0, 200));
-                    g2d.drawLine((int)ptsX[s], (int)ptsY[s], bx, by);
-                    
+                    g2d.drawLine((int) ptsX[s], (int) ptsY[s], bx, by);
+
                     // Lõi đen nhánh
-                    g2d.setStroke(new java.awt.BasicStroke(Math.max(1f, thickness - 1f), java.awt.BasicStroke.CAP_ROUND, java.awt.BasicStroke.JOIN_ROUND));
+                    g2d.setStroke(new java.awt.BasicStroke(Math.max(1f, thickness - 1f), java.awt.BasicStroke.CAP_ROUND,
+                            java.awt.BasicStroke.JOIN_ROUND));
                     g2d.setColor(new Color(15, 5, 0, 230));
-                    g2d.drawLine((int)ptsX[s], (int)ptsY[s], bx, by);
+                    g2d.drawLine((int) ptsX[s], (int) ptsY[s], bx, by);
                 }
             }
         }
@@ -509,24 +513,32 @@ public class KingBoss extends Enemy {
         if (eruptProgress > 0 && eruptProgress < 1) {
             java.util.Random particleRand = new java.util.Random(Double.doubleToLongBits(tx * 321 + ty));
             int pCount = 12;
-            for(int i = 0; i < pCount; i++) {
+            for (int i = 0; i < pCount; i++) {
                 double a = particleRand.nextDouble() * Math.PI * 2;
                 float dist = 10 + particleRand.nextFloat() * 100 * eruptProgress; // Văng ra
-                float heightOffset = (float)Math.sin(eruptProgress * Math.PI) * (20 + particleRand.nextFloat() * 40); // Đường parabol bay lên rồi rớt
-                
-                int px = cx + (int)(Math.cos(a) * dist);
-                int py = cy + (int)(Math.sin(a) * dist) - (int)heightOffset;
-                
+                float heightOffset = (float) Math.sin(eruptProgress * Math.PI) * (20 + particleRand.nextFloat() * 40); // Đường
+                                                                                                                       // parabol
+                                                                                                                       // bay
+                                                                                                                       // lên
+                                                                                                                       // rồi
+                                                                                                                       // rớt
+
+                int px = cx + (int) (Math.cos(a) * dist);
+                int py = cy + (int) (Math.sin(a) * dist) - (int) heightOffset;
+
                 int size = 4 + particleRand.nextInt(6);
-                
+
                 // Chuyển màu từ vàng -> cam -> đỏ thẫm dần theo thời gian
                 Color pColor;
-                if (eruptProgress < 0.3f) pColor = new Color(255, 200, 50);
-                else if (eruptProgress < 0.6f) pColor = new Color(255, 80, 0);
-                else pColor = new Color(80, 20, 10);
-                
+                if (eruptProgress < 0.3f)
+                    pColor = new Color(255, 200, 50);
+                else if (eruptProgress < 0.6f)
+                    pColor = new Color(255, 80, 0);
+                else
+                    pColor = new Color(80, 20, 10);
+
                 g2d.setColor(pColor);
-                g2d.fillRect(px - size/2, py - size/2, size, size); // Vẽ mảng vuông/mảnh vỡ
+                g2d.fillRect(px - size / 2, py - size / 2, size, size); // Vẽ mảng vuông/mảnh vỡ
             }
         }
 
@@ -536,16 +548,16 @@ public class KingBoss extends Enemy {
             int ringSize = (int) (280 * waveProgress);
             float ringAlpha = finalAlpha * (1.0f - waveProgress) * 0.6f;
             g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, ringAlpha));
-            
+
             // Vòng ngoài màu bụi đất
             g2d.setColor(new Color(200, 150, 100));
-            g2d.setStroke(new java.awt.BasicStroke(10f + 10f * (1-waveProgress)));
+            g2d.setStroke(new java.awt.BasicStroke(10f + 10f * (1 - waveProgress)));
             g2d.drawOval(cx - ringSize / 2, cy - ringSize / 2, ringSize, ringSize);
-            
+
             // Vòng trong màu lửa
             g2d.setColor(new Color(255, 100, 0));
-            g2d.setStroke(new java.awt.BasicStroke(4f + 4f * (1-waveProgress)));
-            g2d.drawOval(cx - (ringSize-10) / 2, cy - (ringSize-10) / 2, ringSize-10, ringSize-10);
+            g2d.setStroke(new java.awt.BasicStroke(4f + 4f * (1 - waveProgress)));
+            g2d.drawOval(cx - (ringSize - 10) / 2, cy - (ringSize - 10) / 2, ringSize - 10, ringSize - 10);
         }
 
         g2d.dispose();

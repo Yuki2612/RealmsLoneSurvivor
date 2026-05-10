@@ -96,6 +96,7 @@ public class SkillsState implements State {
                                 PlayerData.soulStones -= cost;
                                 PlayerData.skillSoulLevels.put(u, level + 1);
                                 gameproject.SoundManager.play("levelup");
+                                PlayerData.save();
                             }
                         }
                     }

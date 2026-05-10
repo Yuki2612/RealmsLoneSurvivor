@@ -47,10 +47,11 @@ public class PhantomWarlock extends Enemy {
     private long attack1Cooldown = 5000;
     private long attack2Cooldown = 15000;
     private long summonCooldown = 15000;
-    private long cloneCooldown = 15000;
+    private long cloneCooldown = 20000;
     private long lastSummonTime = 0;
     private long globalSkillCooldown = 1500;
     private boolean isClonePhase = false;
+    private long cloneShootTime = 0;
 
     // Invisibility & Teleport
     private float currentAlpha = 1.0f;
@@ -82,7 +83,7 @@ public class PhantomWarlock extends Enemy {
     private int currentSurviveTime = 0;
 
     public PhantomWarlock(float x, float y, int surviveTimeSeconds) {
-        super(x, y, 100, (int) ((1200 + (surviveTimeSeconds * 8)) * 2f), 1.3f, new Color(50, 0, 80));
+        super(x, y, 100, (int) ((1500 + (surviveTimeSeconds * 8)) * 2f), 1.3f, new Color(50, 0, 80));
         this.isBoss = true;
         this.currentSurviveTime = surviveTimeSeconds;
         this.deathFadeDuration = 2000;
@@ -91,7 +92,8 @@ public class PhantomWarlock extends Enemy {
     }
 
     private void initAnimations() {
-        // Load sprite sheets (ImageManager tự đọc số frame từ hậu tố _fN trong tên file)
+        // Load sprite sheets (ImageManager tự đọc số frame từ hậu tố _fN trong tên
+        // file)
         ImageManager.loadAnimation(bossKey + "_move", "app/res/" + bossKey + "_move.png");
         ImageManager.loadAnimation(bossKey + "_attack1", "app/res/" + bossKey + "_attack1.png");
         ImageManager.loadAnimation(bossKey + "_attack2", "app/res/" + bossKey + "_attack2.png");
@@ -148,9 +150,9 @@ public class PhantomWarlock extends Enemy {
             transformTriggered = true;
             isPhase2 = true;
             speed = 1.5f;
-            attack1Cooldown = 3500;
-            attack2Cooldown = 12000;
-            panel.vfxManager.showWaveBanner("THE PHANTOM WARLOCK AWAKENS!", new Color(150, 0, 255), currentTime);
+            attack1Cooldown = 3000;
+            attack2Cooldown = 10000;
+            panel.vfxManager.showWaveBanner("THE WORLD IS MINE!", new Color(150, 0, 255), currentTime);
             panel.vfxManager.triggerScreenShake(15);
             SoundManager.play("explosion");
 
@@ -206,7 +208,7 @@ public class PhantomWarlock extends Enemy {
                         break;
                     }
                 }
-                if (isInSmoke) {
+                if (isInSmoke && !panel.player.isDashing()) {
                     if (currentTime - lastCageDamageTime > 500) {
                         panel.player.takeDamage(1);
                         panel.vfxManager.spawnDeathParticles(panel.player.getX() + Player.SIZE / 2,
@@ -215,6 +217,37 @@ public class PhantomWarlock extends Enemy {
                     }
                 }
             }
+        }
+
+        if (isClonePhase && currentState != State.TELEPORTING) {
+            // Đứng im, bắn đạn truy đuổi giống hệt bóng
+            if (moveAnim != null)
+                moveAnim.update();
+
+            // Đồng bộ Alpha với bóng
+            currentAlpha = 0.8f;
+
+            if (currentTime - cloneShootTime > 3000) {
+                float angle = (float) Math.atan2((playerY + Player.SIZE / 2) - (y + size / 2),
+                        (playerX + Player.SIZE / 2) - (x + size / 2));
+                float targetX = x + size / 2 + (float) Math.cos(angle) * 500;
+                float targetY = y + size / 2 + (float) Math.sin(angle) * 500;
+
+                Projectile p = new Projectile(x + size / 2, y + size / 2, targetX, targetY, 0.2f, 1500f);
+                p.isEnemyBullet = true;
+                p.isHoming = true;
+                p.targetPlayer = panel.player;
+                p.speedX *= 1.5f;
+                p.speedY *= 1.5f;
+                p.homingTurnSpeed = 0.015f;
+                p.size = 28;
+                p.damage = 1;
+                p.isPurpleGhost = true;
+
+                pendingProjectiles.add(p);
+                cloneShootTime = currentTime;
+            }
+            return; // KHÔNG THỰC HIỆN CÁC STATE BÌNH THƯỜNG (di chuyển, gọi đệ...)
         }
 
         switch (currentState) {
@@ -231,11 +264,17 @@ public class PhantomWarlock extends Enemy {
                     // Tiến lại gần nếu quá xa
                     x += (tDx / tDist) * speed * speedMultiplier;
                     y += (tDy / tDist) * speed * speedMultiplier;
+                    EnemyController.resolveHybridCollision(this, panel.mapManager);
                 } else if (dist < 150) {
                     // Lùi ra xa nếu quá gần
                     x -= (tDx / tDist) * speed * speedMultiplier;
                     y -= (tDy / tDist) * speed * speedMultiplier;
+                    EnemyController.resolveHybridCollision(this, panel.mapManager);
                 }
+
+                // Đảm bảo không văng khỏi thế giới
+                x = Math.max(0, Math.min(x, GamePanel.WORLD_WIDTH - size));
+                y = Math.max(0, Math.min(y, GamePanel.WORLD_HEIGHT - size));
                 // Nếu ở khoảng cách 150 - 250, boss đứng xả skill (giữ nguyên vị trí)
 
                 currentAlpha = 1.0f; // Luôn hiển thị ở trạng thái bình thường
@@ -338,7 +377,7 @@ public class PhantomWarlock extends Enemy {
                         summonGhostMobs();
                         lastSummonTime = currentTime;
                         effectTriggered = true;
-                        panel.vfxManager.showWaveBanner("NECROMANCY!", new Color(150, 255, 50), currentTime);
+                        panel.vfxManager.showWaveBanner("RISE, MY SERVANTS!", new Color(150, 255, 50), currentTime);
                         SoundManager.play("explosion");
                     }
 
@@ -364,9 +403,10 @@ public class PhantomWarlock extends Enemy {
                 }
 
                 if (effectTriggered) {
-                    currentAlpha += 0.05f;
-                    if (currentAlpha >= 1.0f) {
-                        currentAlpha = 1.0f;
+                    float targetAlpha = isClonePhase ? 0.8f : 1.0f;
+                    currentAlpha = targetAlpha; // Đặt bằng đúng độ mờ mục tiêu (0.8 cho phân thân)
+                    if (currentAlpha >= targetAlpha) {
+                        currentAlpha = targetAlpha;
                         currentState = State.MOVING;
                         lastTeleportTime = currentTime;
                         actionTimer = 30;
@@ -416,7 +456,7 @@ public class PhantomWarlock extends Enemy {
     private void createPhantomCage(float playerX, float playerY) {
         float px = playerX + Player.SIZE / 2;
         float py = playerY + Player.SIZE / 2;
-        float cageRadius = 320f; // Mở rộng lồng ra to hơn
+        float cageRadius = 220f; // Giảm kích thước lồng giam
         float wallThickness = 45f; // Giữ độ mỏng
         // Để 4 bức tường ghép mí với nhau vừa khít và không lòi góc ra ngoài (tránh vẽ
         // trùng ở 4 góc)
@@ -515,7 +555,8 @@ public class PhantomWarlock extends Enemy {
             cy = Math.max(0, Math.min(cy, GamePanel.WORLD_HEIGHT - 50));
 
             // Dùng AssassinEnemy làm đệ tử vì chúng chạy nhanh (Sát thủ bóng ma)
-            // HP được tự tính trong constructor của AssassinEnemy dựa trên surviveTimeSeconds
+            // HP được tự tính trong constructor của AssassinEnemy dựa trên
+            // surviveTimeSeconds
             Enemy minion = new AssassinEnemy(cx, cy, 5, currentSurviveTime);
             minion.speed = 1.5f; // Chạy rất nhanh
             spawnedEnemies.add(minion);
@@ -529,26 +570,31 @@ public class PhantomWarlock extends Enemy {
         float px = panel.player.getX();
         float py = panel.player.getY();
 
-        float[][] corners = {
-                { px - 400, py - 400 },
-                { px + 400, py - 400 },
-                { px - 400, py + 400 },
-                { px + 400, py + 400 }
+        // 6 vị trí ở rìa vòng Playground (3 trái, 3 phải)
+        float[][] positions = new float[6][2];
+        float[] angles = {
+                (float) Math.toRadians(140), (float) Math.toRadians(180), (float) Math.toRadians(220), // Bên trái
+                (float) Math.toRadians(-40), (float) Math.toRadians(0), (float) Math.toRadians(40) // Bên phải
         };
 
-        for (int i = 0; i < 4; i++) {
-            corners[i][0] = Math.max(0, Math.min(corners[i][0], GamePanel.WORLD_WIDTH - size));
-            corners[i][1] = Math.max(0, Math.min(corners[i][1], GamePanel.WORLD_HEIGHT - size));
+        for (int i = 0; i < 6; i++) {
+            // Tính toán tọa độ trên rìa vòng tròn
+            positions[i][0] = bgCenterX + (float) Math.cos(angles[i]) * (bgRadius - 80) - size / 2f;
+            positions[i][1] = bgCenterY + (float) Math.sin(angles[i]) * (bgRadius - 80) - size / 2f;
+
+            // Đảm bảo không bị văng khỏi bản đồ
+            positions[i][0] = Math.max(100, Math.min(positions[i][0], GamePanel.WORLD_WIDTH - size - 100));
+            positions[i][1] = Math.max(100, Math.min(positions[i][1], GamePanel.WORLD_HEIGHT - size - 100));
         }
 
-        List<float[]> cornerList = Arrays.asList(corners);
-        Collections.shuffle(cornerList);
+        List<float[]> posList = Arrays.asList(positions);
+        Collections.shuffle(posList);
 
-        this.x = cornerList.get(0)[0];
-        this.y = cornerList.get(0)[1];
+        this.x = posList.get(0)[0];
+        this.y = posList.get(0)[1];
 
-        for (int i = 1; i < 4; i++) {
-            PhantomClone clone = new PhantomClone(cornerList.get(i)[0], cornerList.get(i)[1], this, panel);
+        for (int i = 1; i < 6; i++) {
+            PhantomClone clone = new PhantomClone(posList.get(i)[0], posList.get(i)[1], this, panel);
             spawnedEnemies.add(clone);
         }
     }
@@ -574,26 +620,38 @@ public class PhantomWarlock extends Enemy {
     }
 
     @Override
-    public void takeDamage(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
-        if (currentState == State.TELEPORTING)
-            return; // Né đạn khi đang dịch chuyển
+    public void takeDamageDirect(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
+        if (currentState == State.TELEPORTING && !isClonePhase)
+            return;
         if (hasReflectorShield)
-            return; // Không nhận sát thương khi đang có khiên phản đòn
+            return;
         if (isClonePhase) {
             isClonePhase = false;
+            currentState = State.MOVING;
+            if (vfxManager != null) {
+                vfxManager.triggerScreenShake(10);
+            }
         }
+        super.takeDamageDirect(damage, isCrit, vfxManager, currentTime);
+    }
+
+    @Override
+    public void takeDamage(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
+        if (currentState == State.TELEPORTING && !isClonePhase)
+            return;
+        if (hasReflectorShield)
+            return;
+        // Không xóa isClonePhase ở đây (DoT không làm lộ diện boss)
         super.takeDamage(damage, isCrit, vfxManager, currentTime);
     }
 
     @Override
     public void takeDamage(int damage, VFXManager vfxManager, long currentTime) {
-        if (currentState == State.TELEPORTING)
-            return; // Né đạn khi đang dịch chuyển
+        if (currentState == State.TELEPORTING && !isClonePhase)
+            return;
         if (hasReflectorShield)
             return;
-        if (isClonePhase) {
-            isClonePhase = false;
-        }
+        // Không xóa isClonePhase ở đây
         super.takeDamage(damage, vfxManager, currentTime);
     }
 
@@ -727,6 +785,16 @@ public class PhantomWarlock extends Enemy {
             } else {
                 g2d.drawImage(img, drawX, drawY, drawW, drawH, null);
             }
+
+            // --- HIỆU ỨNG NHẤP NHÁY TRẮNG (HIT FLASH) ---
+            long now = gameproject.GamePanel.getTickTime();
+            if (now < hitFlashEndTime) {
+                float flashAlpha = 0.65f * (float) (hitFlashEndTime - now) / 80f;
+                g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER,
+                        Math.max(0, Math.min(0.65f, flashAlpha))));
+                g2d.setColor(Color.WHITE);
+                g2d.fillRect(drawX, drawY, drawW, drawH);
+            }
         } else {
             // Fallback
             g2d.setColor(new Color(150, 50, 200));
@@ -743,12 +811,21 @@ public class PhantomWarlock extends Enemy {
         private long lastShootTime;
 
         public PhantomClone(float x, float y, PhantomWarlock parent, GamePanel panel) {
-            super(x, y, parent.size, 10, 0, new Color(50, 0, 80));
+            super(x, y, parent.size, 100, 0, new Color(50, 0, 80));
             this.parent = parent;
             this.panel = panel;
-            this.hp = 10;
-            this.maxHp = 10;
+            this.hp = 100;
+            this.maxHp = 100;
             this.lastShootTime = GamePanel.getTickTime();
+        }
+
+        @Override
+        public void takeDamageDirect(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
+            if (this.hp > 0) {
+                gameproject.state.PlayingState.phantomClonesHit++;
+            }
+            this.hp = 0; // Biến mất ngay lập tức khi bị trúng đạn
+            super.takeDamageDirect(damage, isCrit, vfxManager, currentTime);
         }
 
         @Override
@@ -838,6 +915,16 @@ public class PhantomWarlock extends Enemy {
                     g2d.drawImage(img, drawX + drawW, drawY, -drawW, drawH, null);
                 } else {
                     g2d.drawImage(img, drawX, drawY, drawW, drawH, null);
+                }
+
+                // --- HIỆU ỨNG NHẤP NHÁY TRẮNG (HIT FLASH) ---
+                long now = gameproject.GamePanel.getTickTime();
+                if (now < hitFlashEndTime) {
+                    float flashAlpha = 0.65f * (float) (hitFlashEndTime - now) / 80f;
+                    g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER,
+                            Math.max(0, Math.min(0.65f, flashAlpha))));
+                    g2d.setColor(Color.WHITE);
+                    g2d.fillRect(drawX, drawY, drawW, drawH);
                 }
             }
             g2d.dispose();

@@ -14,7 +14,7 @@ public enum Upgrade {
 
         // Nâng cấp Đột phá (Breakthrough) - Tất cả Cap ở Lv 5
         CHAIN_LIGHTNING("Chain Lightning (+Bounces & Range)", true, 5),
-        TRAIL_OF_FIRE("Trail of Fire (Dash leaves fire)", true, 5),
+        TRAIL_OF_FIRE("Trail of Fire (Movement leaves fire)", true, 5),
         ORBITING_ORBS("Orbiting Orbs (+Orbs & Damage)", true, 5),
         EXPLOSIVE_BULLETS("Explosive Bullets (+Radius & Damage)", true, 5),
         FROST_AURA("Frost Aura (+Freeze Radius)", true, 5),

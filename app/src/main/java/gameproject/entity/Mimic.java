@@ -13,7 +13,7 @@ public class Mimic extends Enemy {
 
     public Mimic(float x, float y, int wave) {
         // Máu Mimic: 150 + wave * 40
-        super(x, y, 70, 300 + (wave * 70), 3.5f, Color.MAGENTA);
+        super(x, y, 70, 300 + (wave * 70), 2.6f, Color.MAGENTA);
         this.spawnTime = GamePanel.getTickTime();
         this.isBoss = false;
     }

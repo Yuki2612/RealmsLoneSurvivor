@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class LightningGun extends Weapon {
     public LightningGun() {
-        super("Lightning Gun", 1.2f, 250, true, 450f);
+        super("Lightning Gun", 1.1f, 300, true, 350f);
     }
 
     @Override

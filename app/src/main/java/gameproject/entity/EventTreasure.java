@@ -67,6 +67,7 @@ public class EventTreasure {
                 panel.entityManager.enemies.add(new Mimic(x, y, panel.entityManager.waveCount));
             }
             panel.vfxManager.showWaveBanner("IT'S A MIMIC!", java.awt.Color.RED, currentTime);
+            gameproject.meta.AchievementManager.getInstance().onSecretTriggered("mimic_trap");
         }
     }
 }

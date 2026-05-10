@@ -20,27 +20,27 @@ public class NormalEnemy extends Enemy {
         switch (tier) {
             case 1 -> {
                 this.maxHp = 20;
-                this.speed = 1.2f;
+                this.speed = 0.9f;
             }
             case 2 -> {
                 this.maxHp = 30;
-                this.speed = 1.5f;
+                this.speed = 1.1f;
             }
             case 3 -> {
                 this.maxHp = 50;
-                this.speed = 1.8f;
+                this.speed = 1.4f;
             }
             case 4 -> {
                 this.maxHp = 70;
-                this.speed = 2.1f;
+                this.speed = 1.7f;
             }
             default -> {
                 this.maxHp = 100;
-                this.speed = 2.4f;
+                this.speed = 2.0f;
                 this.tier = 5;
             }
         }
-        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.13f));
+        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 30.0f) * 0.15f));
         this.hp = this.maxHp;
     }
 

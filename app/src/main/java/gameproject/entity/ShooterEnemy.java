@@ -23,32 +23,32 @@ public class ShooterEnemy extends Enemy {
         switch (tier) {
             case 1 -> {
                 this.maxHp = 15;
-                this.speed = 1.0f;
+                this.speed = 0.8f;
                 this.shootCooldown = 240;
             }
             case 2 -> {
                 this.maxHp = 25;
-                this.speed = 1.2f;
+                this.speed = 1.0f;
                 this.shootCooldown = 210;
             }
             case 3 -> {
                 this.maxHp = 40;
-                this.speed = 1.5f;
+                this.speed = 1.2f;
                 this.shootCooldown = 180;
             }
             case 4 -> {
                 this.maxHp = 60;
-                this.speed = 1.8f;
+                this.speed = 1.5f;
                 this.shootCooldown = 150;
             }
             default -> {
                 this.maxHp = 80;
-                this.speed = 2.0f;
+                this.speed = 1.8f;
                 this.shootCooldown = 120;
                 this.tier = 5;
             }
         }
-        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.08f));
+        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 30.0f) * 0.15f));
         this.hp = this.maxHp;
         this.currentCooldown = rand.nextInt(shootCooldown);
     }

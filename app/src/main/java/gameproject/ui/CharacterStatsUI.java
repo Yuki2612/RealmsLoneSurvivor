@@ -61,14 +61,16 @@ public class CharacterStatsUI {
         // Column 2: Combat Stats
         int critLevel = player.getUpgradeLevel(Upgrade.CRIT_CHANCE);
         float totalCrit = (PlayerData.statCritLevel * 0.01f) + (critLevel * 0.07f);
+        float critMulti = 1.5f + (PlayerData.evoBloodlust * 0.10f);
         int vampLevel = player.getUpgradeLevel(Upgrade.VAMPIRISM);
+        float totalVamp = (vampLevel * 0.5f) + (PlayerData.evoVampirism * 0.2f);
         
         drawStatRow(g2d, "Base Damage:", "" + game.upgradeManager.playerDamage, col2X, startY);
         drawStatRow(g2d, "Crit Chance:", String.format("%.0f%%", totalCrit * 100), col2X, startY + spacing);
-        drawStatRow(g2d, "Crit Multi:", "150%", col2X, startY + spacing * 2);
+        drawStatRow(g2d, "Crit Multi:", String.format("%.0f%%", critMulti * 100), col2X, startY + spacing * 2);
         drawStatRow(g2d, "Atk Cooldown:", String.format("%.2fs", game.currentWeapon.cooldown / 1000f), col2X, startY + spacing * 3);
         drawStatRow(g2d, "Weapon Range:", String.format("%.0f px", game.currentWeapon.range), col2X, startY + spacing * 4);
-        drawStatRow(g2d, "Vampirism:", vampLevel + "%", col2X, startY + spacing * 5);
+        drawStatRow(g2d, "Vampirism:", String.format("%.1f%%", totalVamp), col2X, startY + spacing * 5);
 
 
         // Skills Section (Bottom)

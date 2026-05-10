@@ -20,11 +20,10 @@ import gameproject.weapon.Weapon;
 public class UpgradeManager {
     public int playerLevel = 1;
     public int currentExp = 0;
-    public int expToNextLevel = 100;
+    public int expToNextLevel = 150; // Tăng EXP khởi điểm để phù hợp với lượng quái mới
 
     // Những chỉ số gốc của Player được quản lý tập trung ở đây
     public int playerDamage = 10;
-
 
     // Lưu 3 thẻ nâng cấp hiện tại trên màn hình
     public Upgrade[] currentUpgradeOptions;
@@ -35,14 +34,14 @@ public class UpgradeManager {
         expToNextLevel = 100;
         playerDamage = 10 + gameproject.meta.PlayerData.statDamageLevel;
 
-
         if (startingLevel > 1) {
             // Tính toán tổng EXP cần thiết để đạt đến level mong muốn
             int totalExpNeeded = 0;
             for (int i = 1; i < startingLevel; i++) {
                 totalExpNeeded += (int) (100 * Math.pow(1.25, i - 1));
             }
-            // Gán EXP vào. Khi game bắt đầu, processLevelUp sẽ tự động kích hoạt giao diện chọn thẻ liên tục.
+            // Gán EXP vào. Khi game bắt đầu, processLevelUp sẽ tự động kích hoạt giao diện
+            // chọn thẻ liên tục.
             currentExp = totalExpNeeded;
         }
         currentUpgradeOptions = null;
@@ -61,7 +60,9 @@ public class UpgradeManager {
         if (currentExp >= expToNextLevel) {
             currentExp -= expToNextLevel;
             playerLevel++;
-            expToNextLevel = (int) (100 * Math.pow(1.25, playerLevel - 1));
+            gameproject.meta.AchievementManager.getInstance().updateLevel(playerLevel);
+            // Công thức EXP mới: Base 150, hệ số 1.30 (Tăng độ khó khi level cao)
+            expToNextLevel = (int) (150 * Math.pow(1.30, playerLevel - 1));
 
             generateOptions(player);
             return true; // Trả về true báo hiệu game nên dừng để bốc thẻ
@@ -100,7 +101,8 @@ public class UpgradeManager {
                 allValidOptions.add(u);
         }
 
-        // 2. Nếu chưa đủ 5 loại đột phá, thêm các loại chưa sở hữu vào danh sách lựa chọn
+        // 2. Nếu chưa đủ 5 loại đột phá, thêm các loại chưa sở hữu vào danh sách lựa
+        // chọn
         if (owned.size() < 5) {
             for (Upgrade u : Upgrade.values()) {
                 if (u.isBreakthrough && !owned.contains(u) && gameproject.meta.PlayerData.unlockedSkills.contains(u)) {
@@ -109,7 +111,8 @@ public class UpgradeManager {
             }
         }
 
-        // 3. Xáo trộn toàn bộ để đảm bảo tính ngẫu nhiên (không ưu tiên cái đã có lên slot 1)
+        // 3. Xáo trộn toàn bộ để đảm bảo tính ngẫu nhiên (không ưu tiên cái đã có lên
+        // slot 1)
         Collections.shuffle(allValidOptions);
 
         List<Upgrade> options = new ArrayList<>();

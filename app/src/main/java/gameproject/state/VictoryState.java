@@ -52,9 +52,6 @@ public class VictoryState implements State {
             }
             game.input.clearClickAndKey();
         }
-        
-        // Block other inputs as requested
-        game.input.clearClickAndKey();
     }
 
     @Override

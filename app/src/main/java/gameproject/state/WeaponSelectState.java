@@ -53,16 +53,25 @@ public class WeaponSelectState implements State {
             int totalW = (3 * cardW + 2 * spacing);
             int startX = (game.screenWidth - totalW) / 2;
             int startY = (game.screenHeight - cardH) / 2 + 40;
-            
+
             int mx = game.input.mouseX;
             int my = game.input.mouseY;
 
             for (int i = 0; i < 3; i++) {
                 int bx = startX + i * (cardW + spacing);
-                // Kiểm tra click trong phạm vi thẻ (cardH có thể offset nhẹ nhưng ở đây ta dùng tọa độ tĩnh)
+                // Kiểm tra click trong phạm vi thẻ (cardH có thể offset nhẹ nhưng ở đây ta dùng
+                // tọa độ tĩnh)
                 if (mx >= bx && mx <= bx + cardW && my >= startY && my <= startY + cardH) {
+                    Weapon selected = options[i];
                     // Kế thừa tỉ lệ nâng cấp từ vũ khí hiện tại
-                    game.currentWeapon = transferStats(game.currentWeapon, options[i]);
+                    game.currentWeapon = transferStats(game.currentWeapon, selected);
+
+                    if (selected instanceof HellfireBoomstick ||
+                            selected instanceof Railgun ||
+                            selected instanceof LightningGun) {
+                        gameproject.meta.AchievementManager.getInstance().onEvolvedWeapon(selected.getClass().getSimpleName());
+                    }
+
                     gameproject.SoundManager.play("shoot"); // Âm thanh xác nhận
                     game.changeState(new PlayingState());
                     break;

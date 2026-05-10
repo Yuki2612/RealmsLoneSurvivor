@@ -32,6 +32,9 @@ public class EntityManager {
     public int waveCount = 0;
     public int activeBossCount = 0; // Cập nhật an toàn để tránh crash music
     private long currentSpawnInterval = 10000;
+    private int enemiesLeftInWave = 0; // Số quái còn lại của đợt 2 (dành cho wave >= 10)
+    private long lastBurstTime = 0;
+    private static final long BURST_INTERVAL = 8000; // Khoảng cách giữa 2 đợt quái (8 giây)
 
     public void startNewGame(long currentTime, int startingWave) {
         synchronized (enemies) {
@@ -57,10 +60,13 @@ public class EntityManager {
         waveCount = startingWave - 1;
         currentSpawnInterval = 10000;
         lastEnemySpawnTime = currentTime - currentSpawnInterval;
+        enemiesLeftInWave = 0;
+        lastBurstTime = 0;
     }
 
     public void update(Player player, VFXManager vfxManager, List<PassiveSkill> activeSkills,
             int screenWidth, int screenHeight, long currentTime, int surviveTimeSeconds, GamePanel panel) {
+        List<Enemy> pendingSummons = new ArrayList<>();
 
         // Đếm boss đang hoạt động (không dùng stream để tránh
         // ConcurrentModificationException)
@@ -72,18 +78,35 @@ public class EntityManager {
         activeBossCount = bCount;
 
         // 1. SINH QUÁI VÀ BOSS
-        if ((enemies.isEmpty() || currentTime - lastEnemySpawnTime >= currentSpawnInterval) && waveCount < FINAL_WAVE) {
+        if ((enemies.isEmpty() || currentTime - lastEnemySpawnTime >= currentSpawnInterval) && waveCount < FINAL_WAVE
+                && enemiesLeftInWave == 0) {
             waveCount++;
-            // Số lượng quái tăng vừa phải để tránh gây loạn màn hình (đã bù EXP bằng tỉ lệ rơi Soul)
-            int waveSize = 3 + (int) (waveCount * 1.2f);
+            // TĂNG SỐ LƯỢNG QUÁI: 5 + 2.0f mỗi wave (Kéo dài trải nghiệm chiến đấu)
+            int totalWaveSize = 5 + (int) (waveCount * 2.0f);
             if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
                     gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
-                waveSize = (int) (waveSize * 1.5f);
+                totalWaveSize = (int) (totalWaveSize * 1.5f);
             }
-            for (int i = 0; i < waveSize; i++) {
-                Enemy newEnemy = spawnSafeEnemy(player, panel, surviveTimeSeconds);
-                synchronized (enemies) {
-                    enemies.add(newEnemy);
+
+            if (waveCount >= 10) {
+                // Cơ chế Phân đợt (Multi-Burst): Chia đôi quái, đợt 2 ra sau 8 giây
+                int firstBurst = totalWaveSize / 2;
+                enemiesLeftInWave = totalWaveSize - firstBurst;
+
+                for (int i = 0; i < firstBurst; i++) {
+                    Enemy newEnemy = spawnSafeEnemy(player, panel, surviveTimeSeconds);
+                    synchronized (enemies) {
+                        enemies.add(newEnemy);
+                    }
+                }
+                lastBurstTime = currentTime;
+            } else {
+                // Wave thấp: Spawn 1 đợt duy nhất
+                for (int i = 0; i < totalWaveSize; i++) {
+                    Enemy newEnemy = spawnSafeEnemy(player, panel, surviveTimeSeconds);
+                    synchronized (enemies) {
+                        enemies.add(newEnemy);
+                    }
                 }
             }
 
@@ -126,12 +149,25 @@ public class EntityManager {
             }
 
             lastEnemySpawnTime = currentTime;
-            long interval = Math.min(10000 + ((waveCount - 1) * 5000), 25000);
+            // Kéo giãn nhịp độ Wave (15s - 45s) để đạt thời lượng game ~17 phút
+            long interval = Math.min(15000 + ((waveCount - 1) * 3000), 45000);
             if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
                     gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE) {
                 interval /= 1.5;
             }
             currentSpawnInterval = interval;
+        }
+
+        // Xử lý đợt quái thứ 2 (Second Burst) cho các wave cao
+        if (enemiesLeftInWave > 0 && currentTime - lastBurstTime >= BURST_INTERVAL) {
+            for (int i = 0; i < enemiesLeftInWave; i++) {
+                Enemy newEnemy = spawnSafeEnemy(player, panel, surviveTimeSeconds);
+                synchronized (enemies) {
+                    enemies.add(newEnemy);
+                }
+            }
+            enemiesLeftInWave = 0;
+            vfxManager.showWaveBanner("⚠  REINFORCEMENTS ARRIVED!", new java.awt.Color(255, 100, 100), currentTime);
         }
 
         // 2. CẬP NHẬT KỸ NĂNG BỊ ĐỘNG
@@ -156,7 +192,7 @@ public class EntityManager {
                     if (obs.isDestroyed() && obs instanceof gameproject.environment.WoodenCrate) {
                         synchronized (resourceDrops) {
                             // WoodenCrates drop 2-5 gold and 5% chance for a soul
-                            int goldToDrop = 2 + (int) (Math.random() * 4);
+                            int goldToDrop = 2 + (int) (Math.random() * 8);
                             spawnResource(p.getX(), p.getY(), ResourceDrop.Type.GOLD, goldToDrop, currentTime, 15000);
                             if (Math.random() < 0.05) {
                                 spawnResource(p.getX(), p.getY(), ResourceDrop.Type.SOUL, 1, currentTime, 30000);
@@ -243,7 +279,9 @@ public class EntityManager {
                                     if (!e.isDead()
                                             && distanceToLineSegment(e.getX() + e.size / 2, e.getY() + e.size / 2,
                                                     p.startX, p.startY, currentEndX, currentEndY) <= 40) {
-                                        e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                        e.takeDamageDirect(p.damage, p.isCrit, vfxManager, currentTime);
+                                        if (p.isCrit)
+                                            player.triggerFrenzy();
                                         for (PassiveSkill skill : activeSkills) {
                                             skill.onProjectileHit(p, e, player, vfxManager, currentTime);
                                         }
@@ -257,7 +295,9 @@ public class EntityManager {
                         synchronized (enemies) {
                             for (Enemy e : enemies) {
                                 if (e != p.ignoredEnemy && p.getBounds().intersects(e.getBounds())) {
-                                    e.takeDamage(p.damage, p.isCrit, vfxManager, currentTime);
+                                    e.takeDamageDirect(p.damage, p.isCrit, vfxManager, currentTime);
+                                    if (p.isCrit)
+                                        player.triggerFrenzy();
                                     for (PassiveSkill skill : activeSkills) {
                                         skill.onProjectileHit(p, e, player, vfxManager, currentTime);
                                     }
@@ -309,7 +349,9 @@ public class EntityManager {
         }
 
         // 4. XỬ LÝ QUÁI VẬT DI CHUYỂN, BẮN ĐẠN VÀ VA CHẠM
-        float speedMultiplier = 1.0f + (surviveTimeSeconds / 60) * 0.12f;
+        // Giảm hệ số tăng tốc độ (0.12f -> 0.05f) để quái không quá nhanh ở wave cao
+        // (Wave 15+)
+        float speedMultiplier = 1.0f + (surviveTimeSeconds / 60) * 0.05f;
         synchronized (enemies) {
             // Duyệt qua bản sao để tránh ConcurrentModificationException khi đang loop
             for (Enemy enemy : new ArrayList<>(enemies)) {
@@ -327,8 +369,8 @@ public class EntityManager {
                                         .add(new ChestDrop(enemy.getX(), enemy.getY(), isRare, currentTime + 300000));
                             }
                             // Rơi tài nguyên Boss
-                            int goldAmount = 100 + (waveCount / 5) * 50;
-                            int soulAmount = 5 + (waveCount / 5) * 3;
+                            int goldAmount = 200 + (waveCount / 5) * 100;
+                            int soulAmount = 20 + (waveCount / 5) * 5;
                             synchronized (resourceDrops) {
                                 spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD, goldAmount,
                                         currentTime, 45000);
@@ -343,7 +385,7 @@ public class EntityManager {
                         } else {
                             // Rơi tài nguyên quái thường
                             float dropChance = 0.35f;
-                            int goldBase = 1 + (int) (Math.random() * 4);
+                            int goldBase = 2 + (int) (Math.random() * 8);
                             int lootMult = 1;
                             if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON
                                     &&
@@ -351,11 +393,21 @@ public class EntityManager {
                                 dropChance = 0.5f;
                                 lootMult = 2;
                             }
+                            if (enemy.isElite) {
+                                dropChance = 1.0f; // Elite luôn rơi đồ
+                                goldBase *= 3; // Gold x3
+                                // Luôn rơi 1 Soul
+                                synchronized (resourceDrops) {
+                                    spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.SOUL, 1,
+                                            currentTime, 45000);
+                                }
+                            }
+
                             if (Math.random() < dropChance) {
                                 synchronized (resourceDrops) {
                                     spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.GOLD,
                                             goldBase * lootMult, currentTime, 20000);
-                                    if (Math.random() < 0.1)
+                                    if (!enemy.isElite && Math.random() < 0.1)
                                         spawnResource(enemy.getX(), enemy.getY(), ResourceDrop.Type.SOUL, 1,
                                                 currentTime, 30000);
                                 }
@@ -377,6 +429,7 @@ public class EntityManager {
                             skill.onEnemyDeath(enemy, player, enemies, vfxManager, currentTime);
                         }
                         player.getComboManager().onEnemyKilled(enemy.isBoss);
+
                     }
 
                     // 2. CẬP NHẬT HOẠT ẢNH CHẾT (Đối với Boss có death animation)
@@ -385,17 +438,50 @@ public class EntityManager {
 
                     // 3. XÓA KHỎI DANH SÁCH KHI HẾT ANIMATION
                     if (enemy.shouldRemove()) {
-                        // Lấy lượng EXP gốc (Tương đương maxHp của quái)
+                        // Lượng EXP gốc (Tương đương maxHp)
                         int baseExp = enemy.getExpValue();
-                        // Cộng một lượng Flat Bonus nhỏ theo Wave để kéo Tiers thấp lên, 
-                        // tránh lạm phát vì lượng quái (waveSize) đã tăng rồi.
+                        if (enemy.isElite)
+                            baseExp *= 5; // BƯỚC 2: Elite x5 EXP
+
+                        // Cộng Bonus theo Wave
                         int finalExp = baseExp + (waveCount * 3);
-                        
+
                         panel.addScoreAndExp(finalExp);
                         SoundManager.play("hit");
+
+                        // Tích hợp Thành tựu
+                        if (!enemy.isBoss) {
+                            gameproject.meta.AchievementManager.getInstance().addKill();
+                        } else {
+                            int bossIdx = 0;
+                            if (enemy instanceof SoulReaper)
+                                bossIdx = 1;
+                            else if (enemy instanceof ShadowBoss)
+                                bossIdx = 2;
+                            else if (enemy instanceof DarkFairy)
+                                bossIdx = 3;
+                            else if (enemy instanceof KingBoss)
+                                bossIdx = 4;
+                            else if (enemy instanceof PhantomWarlock)
+                                bossIdx = 5;
+                            gameproject.meta.AchievementManager.getInstance().onBossKilled(bossIdx);
+                        }
+
                         vfxManager.spawnDeathParticles(enemy.getX() + enemy.size / 2f,
                                 enemy.getY() + enemy.size / 2f, currentTime,
                                 enemy.isBoss ? new java.awt.Color(255, 80, 80) : enemy.color);
+
+                        // Xử lý Affix EXPLOSIVE: Nổ khi chết
+                        if (enemy.isElite && enemy.eliteAffix == Enemy.EliteAffix.EXPLOSIVE) {
+                            float dx = (player.getX() + Player.SIZE / 2) - (enemy.getX() + enemy.size / 2);
+                            float dy = (player.getY() + Player.SIZE / 2) - (enemy.getY() + enemy.size / 2);
+                            float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                            if (dist < 120) {
+                                player.takeDamage(1);
+                            }
+                            vfxManager.triggerScreenShake(5);
+                            SoundManager.play("explosion");
+                        }
 
                         synchronized (enemies) {
                             enemies.remove(enemy);
@@ -424,6 +510,34 @@ public class EntityManager {
                 enemy.playerDamageCache = panel.upgradeManager.playerDamage;
                 enemy.updateStatusEffects(currentTime, vfxManager);
                 enemy.inAcidZone = false;
+
+                // --- Xử lý Affix SPLITTING: Tách đôi khi HP < 50% ---
+                if (enemy.isElite && enemy.eliteAffix == Enemy.EliteAffix.SPLITTING && !enemy.hasSplit
+                        && enemy.hp < enemy.maxHp / 2) {
+                    enemy.hasSplit = true;
+                    vfxManager.spawnDeathParticles(enemy.x + enemy.size / 2, enemy.y + enemy.size / 2, currentTime,
+                            java.awt.Color.MAGENTA);
+                    SoundManager.play("explosion");
+
+                    for (int i = 0; i < 2; i++) {
+                        float offX = (i == 0) ? -25 : 25;
+                        Enemy child;
+                        if (enemy instanceof ShooterEnemy)
+                            child = new ShooterEnemy(enemy.x + offX, enemy.y, 3, surviveTimeSeconds);
+                        else if (enemy instanceof AssassinEnemy)
+                            child = new AssassinEnemy(enemy.x + offX, enemy.y, 3, surviveTimeSeconds);
+                        else if (enemy instanceof WizardEnemy)
+                            child = new WizardEnemy(enemy.x + offX, enemy.y, 3, surviveTimeSeconds);
+                        else
+                            child = new NormalEnemy(enemy.x + offX, enemy.y, 3, surviveTimeSeconds);
+
+                        child.isElite = false; // Đệ tử không phải Elite
+                        child.size = (int) (enemy.size * 0.7f);
+                        child.maxHp = (int) (enemy.maxHp * 0.4f);
+                        child.hp = child.maxHp;
+                        pendingSummons.add(child);
+                    }
+                }
 
                 if (enemy.freezeEndTime <= currentTime) {
                     enemy.update(player.getX(), player.getY(), currentEnemySpeedMulti, enemies, GamePanel.WORLD_WIDTH,
@@ -527,6 +641,9 @@ public class EntityManager {
                     } else {
                         panel.triggerBreakthroughUpgrade();
                     }
+                    if (Math.random() < 0.05) { // 5% chance for "Jackpot!"
+                        gameproject.meta.AchievementManager.getInstance().onTripleChest();
+                    }
                     cIt.remove();
                 }
             }
@@ -544,20 +661,13 @@ public class EntityManager {
             }
         }
 
-        // KIỂM TRA CHIẾN THẮNG: Kích hoạt ngay khi quái cuối cùng chết (hp <= 0) không
-        // đợi dọn sạch list
-        if (waveCount >= FINAL_WAVE) {
-            boolean anyAlive = false;
+        // KIỂM TRA CHIẾN THẮNG: Đã được chuyển sang PlayingState để theo dõi No-Hit
+        // if (waveCount >= FINAL_WAVE) { ... }
+
+        // 7. THÊM QUÁI VẬT TỪ CHIÊU THỨC/AFFIX
+        if (!pendingSummons.isEmpty()) {
             synchronized (enemies) {
-                for (Enemy e : enemies) {
-                    if (!e.isDead()) {
-                        anyAlive = true;
-                        break;
-                    }
-                }
-            }
-            if (!anyAlive) {
-                panel.triggerVictory();
+                enemies.addAll(pendingSummons);
             }
         }
     }
@@ -589,18 +699,20 @@ public class EntityManager {
 
         // Thử tìm vị trí an toàn (không vật cản và có đường đi) tối đa 10 lần
         for (int attempt = 0; attempt < 10; attempt++) {
+            // BƯỚC 3: Spawn quái ở xa hơn (300-500px) để người chơi có không gian thở
+            int spawnOffset = 300 + rand.nextInt(200);
             int side = rand.nextInt(4);
             if (side == 0) { // Top
                 ex = camX + rand.nextInt(sw);
-                ey = camY - 50;
+                ey = camY - spawnOffset;
             } else if (side == 1) { // Bottom
                 ex = camX + rand.nextInt(sw);
-                ey = camY + sh + 50;
+                ey = camY + sh + spawnOffset;
             } else if (side == 2) { // Left
-                ex = camX - 50;
+                ex = camX - spawnOffset;
                 ey = camY + rand.nextInt(sh);
             } else { // Right
-                ex = camX + sw + 50;
+                ex = camX + sw + spawnOffset;
                 ey = camY + rand.nextInt(sh);
             }
 
@@ -623,17 +735,53 @@ public class EntityManager {
         int spawnTier = rand.nextInt((maxTier - minTier) + 1) + minTier;
 
         // Bắt đầu trộn các loại quái mới từ Wave 3
+        Enemy e;
         if (waveCount >= 3) {
             double roll = Math.random();
             if (roll < 0.15)
-                return new ShooterEnemy(ex, ey, spawnTier, surviveTimeSeconds);
-            if (roll < 0.25)
-                return new AssassinEnemy(ex, ey, spawnTier, surviveTimeSeconds);
-            if (waveCount >= 5 && roll < 0.35)
-                return new WizardEnemy(ex, ey, spawnTier, surviveTimeSeconds);
+                e = new ShooterEnemy(ex, ey, spawnTier, surviveTimeSeconds);
+            else if (roll < 0.25)
+                e = new AssassinEnemy(ex, ey, spawnTier, surviveTimeSeconds);
+            else if (waveCount >= 5 && roll < 0.35)
+                e = new WizardEnemy(ex, ey, spawnTier, surviveTimeSeconds);
+            else
+                e = new NormalEnemy(ex, ey, spawnTier, surviveTimeSeconds);
+        } else {
+            e = new NormalEnemy(ex, ey, spawnTier, surviveTimeSeconds);
         }
 
-        return new NormalEnemy(ex, ey, spawnTier, surviveTimeSeconds);
+        // BƯỚC 2: Logic Quái Tinh Anh (Elite)
+        if (waveCount >= 5 && !e.isBoss) {
+            // Tỉ lệ spawn tăng dần từ 5% lên 15% (giảm so với plan gốc để cân bằng với max
+            // cap 4)
+            double eliteChance = 0.05 + (Math.min(waveCount, 20) / 20.0) * 0.10;
+
+            // Giới hạn tối đa 4 quái Elite trên màn hình
+            int currentElites = 0;
+            synchronized (enemies) {
+                for (Enemy active : enemies) {
+                    if (active.isElite && !active.isDead())
+                        currentElites++;
+                }
+            }
+
+            if (currentElites < 4 && Math.random() < eliteChance) {
+                e.isElite = true;
+                e.maxHp *= 3; // Máu trâu gấp 3
+                e.hp = e.maxHp;
+                e.size = (int) (e.size * 1.4f); // To hơn 40%
+                e.speed *= 0.85f; // Chậm hơn 15%
+
+                // Gắn Affix ngẫu nhiên
+                Enemy.EliteAffix[] affixes = Enemy.EliteAffix.values();
+                e.eliteAffix = affixes[rand.nextInt(affixes.length)];
+                if (e.eliteAffix == Enemy.EliteAffix.SHIELDED) {
+                    e.shieldHits = 3;
+                }
+            }
+        }
+
+        return e;
     }
 
     private Enemy getClosestEnemy(Enemy source, ArrayList<Enemy> allEnemies, float maxDist) {

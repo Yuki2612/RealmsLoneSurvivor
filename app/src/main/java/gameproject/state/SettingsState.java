@@ -17,9 +17,11 @@ public class SettingsState implements State {
             if (game.input.typedKeySequence.endsWith("010206")) {
                 isAdminMode = true;
                 showAdminInput = false;
+                gameproject.meta.AchievementManager.getInstance().onSecretTriggered("admin_access");
             }
         } else if (game.input.typedKeySequence.endsWith("010206")) {
             isAdminMode = true;
+            gameproject.meta.AchievementManager.getInstance().onSecretTriggered("admin_access");
         }
 
         if (game.input.escPressed) {
@@ -140,18 +142,13 @@ public class SettingsState implements State {
     }
 
     private void performReset() {
-        gameproject.meta.PlayerData.gold = 2000;
-        gameproject.meta.PlayerData.soulStones = 20;
-        gameproject.meta.PlayerData.statHealthLevel = 0;
-        gameproject.meta.PlayerData.statDamageLevel = 0;
-        gameproject.meta.PlayerData.statSpeedLevel = 0;
-        gameproject.meta.PlayerData.statDashLevel = 0;
-        gameproject.meta.PlayerData.statCritLevel = 0;
-        gameproject.meta.PlayerData.statCooldownLevel = 0;
-        gameproject.meta.PlayerData.skillSoulLevels.clear();
-        gameproject.meta.PlayerData.debugStartWave = 1;
-        gameproject.meta.PlayerData.debugStartLevel = 1;
-        gameproject.meta.PlayerData.save();
+        gameproject.meta.PlayerData.reset();
+        
+        // Reset Achievements
+        gameproject.meta.AchievementManager.getInstance().reset();
+
+        // Rebake Stats UI to reset lines
+        gameproject.ui.StatsUI.requestRebake();
     }
 
     @Override

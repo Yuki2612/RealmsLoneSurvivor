@@ -29,7 +29,7 @@ public class SoulReaper extends Enemy {
     private boolean facingRight = true; // Hướng mặt của Boss
 
     public SoulReaper(float startX, float startY, int surviveTimeSeconds) {
-        super(startX, startY, 90, (int) ((500 + (surviveTimeSeconds * 8)) * 1.25), 2.2f, Color.RED);
+        super(startX, startY, 90, (int) ((700 + (surviveTimeSeconds * 8)) * 1.2), 2.2f, Color.RED);
         this.isBoss = true;
         this.deathFadeDuration = 1500;
 

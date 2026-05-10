@@ -68,7 +68,7 @@ public class DarkFairy extends Enemy {
     private long transformStartTime = 0;
 
     public DarkFairy(float startX, float startY, int surviveTimeSeconds) {
-        super(startX, startY, 60, (int) ((750 + (surviveTimeSeconds * 8)) * 1.55f), 1f, new Color(80, 0, 120));
+        super(startX, startY, 60, (int) ((1100 + (surviveTimeSeconds * 8)) * 1.6f), 1.1f, new Color(80, 0, 120));
         this.isBoss = true;
         this.deathFadeDuration = 2000;
         this.currentSurviveTime = surviveTimeSeconds;
@@ -224,7 +224,7 @@ public class DarkFairy extends Enemy {
                     // Bắn đạn: Bullet Hell
                     int shootTrigger = isPhase2 ? 2 : 3;
                     int maxVolleys = isPhase2 ? 2 : 1;
-                    
+
                     if (shootCastAnim.getFrameIndex() >= shootTrigger) {
                         if (shootVolleys < maxVolleys && currentTime - lastVolleyTime > 300) {
                             fireBulletHell(playerX, playerY, shootVolleys);
@@ -330,7 +330,7 @@ public class DarkFairy extends Enemy {
 
                 if (transformAnim != null && transformAnim.hasFinishedCycle()) {
                     isPhase2 = true;
-                    speed = 1.6f; // Nhanh hơn Phase 1
+                    speed = 1.6f; // Nhanh hơn Phase 1 (khôi phục theo yêu cầu)
                     shootCooldown = 1200;
                     summonCooldown = 8000;
                     currentState = State.MOVING;
@@ -349,12 +349,12 @@ public class DarkFairy extends Enemy {
     private void fireBulletHell(float playerX, float playerY, int volleyIndex) {
         float cx = x + size / 2;
         float cy = y + size / 2;
-        
+
         // Offset góc cho loạt thứ 2 để đạn lấp đầy khoảng trống
         float angleOffset = (volleyIndex == 1) ? 0.15f : 0f;
-        
+
         int bulletCount = isPhase2 ? 18 : 10;
-        
+
         for (int i = 0; i < bulletCount; i++) {
             float angle = (float) (Math.PI * 2 * i / bulletCount) + angleOffset;
             float targetX = cx + (float) Math.cos(angle) * 500;

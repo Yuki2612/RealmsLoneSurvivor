@@ -26,32 +26,32 @@ public class AssassinEnemy extends Enemy {
         switch (tier) {
             case 1 -> {
                 this.maxHp = 10;
-                this.baseSpeed = 1.5f;
+                this.baseSpeed = 1.1f;
                 this.invisCooldown = 300;
             }
             case 2 -> {
                 this.maxHp = 15;
-                this.baseSpeed = 1.8f;
+                this.baseSpeed = 1.4f;
                 this.invisCooldown = 270;
             }
             case 3 -> {
                 this.maxHp = 25;
-                this.baseSpeed = 2.1f;
+                this.baseSpeed = 1.7f;
                 this.invisCooldown = 240;
             }
             case 4 -> {
                 this.maxHp = 35;
-                this.baseSpeed = 2.5f;
+                this.baseSpeed = 2.0f;
                 this.invisCooldown = 210;
             }
             default -> {
                 this.maxHp = 50;
-                this.baseSpeed = 3.0f;
+                this.baseSpeed = 2.5f;
                 this.invisCooldown = 180;
                 this.tier = 5;
             }
         }
-        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.08f));
+        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 30.0f) * 0.15f));
         this.hp = this.maxHp;
         this.speed = this.baseSpeed;
         this.invisTimer = rand.nextInt(60);

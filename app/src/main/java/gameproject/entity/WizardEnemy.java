@@ -23,32 +23,32 @@ public class WizardEnemy extends Enemy {
         switch (tier) {
             case 1 -> {
                 this.maxHp = 30;
-                this.speed = 0.8f;
+                this.speed = 0.6f;
                 this.shootCooldown = 300;
             }
             case 2 -> {
                 this.maxHp = 50;
-                this.speed = 0.9f;
+                this.speed = 0.7f;
                 this.shootCooldown = 270;
             }
             case 3 -> {
                 this.maxHp = 80;
-                this.speed = 1.0f;
+                this.speed = 0.8f;
                 this.shootCooldown = 240;
             }
             case 4 -> {
                 this.maxHp = 120;
-                this.speed = 1.1f;
+                this.speed = 0.9f;
                 this.shootCooldown = 210;
             }
             default -> {
                 this.maxHp = 160;
-                this.speed = 1.2f;
+                this.speed = 1.0f;
                 this.shootCooldown = 180;
                 this.tier = 5;
             }
         }
-        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 60.0f) * 0.08f));
+        this.maxHp = (int) (this.maxHp * (1.0f + (surviveTimeSeconds / 30.0f) * 0.15f));
         this.hp = this.maxHp;
         this.currentCooldown = rand.nextInt(120) + 60;
     }

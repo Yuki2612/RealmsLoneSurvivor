@@ -64,8 +64,10 @@ public class ResourceDrop {
     public void applyToPlayer() {
         if (type == Type.GOLD) {
             PlayerData.gold += amount;
+            gameproject.meta.AchievementManager.getInstance().addGold(amount);
         } else {
             PlayerData.soulStones += amount;
+            gameproject.meta.AchievementManager.getInstance().addSoul(amount);
         }
     }
 

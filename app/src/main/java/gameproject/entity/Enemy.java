@@ -33,7 +33,19 @@ public abstract class Enemy implements gameproject.Renderable {
     public float kbX = 0, kbY = 0;
 
     public boolean isBoss = false;
+    public boolean isElite = false;
+    public EliteAffix eliteAffix = null;
+    public int shieldHits = 0; // Cho affix SHIELDED
+    public boolean hasSplit = false; // Cho affix SPLITTING
     public boolean movingRight = true;
+
+    public enum EliteAffix {
+        EXPLOSIVE, // Nổ khi chết
+        SPLITTING, // Tách đôi khi HP thấp
+        SHIELDED,  // Khiên 3 hit
+        VAMPIRIC,  // Hút máu khi chạm
+        BERSERKER  // Tăng tốc khi HP thấp
+    }
 
     public long burnEndTime = 0;
     public long chillEndTime = 0;
@@ -42,6 +54,8 @@ public abstract class Enemy implements gameproject.Renderable {
     public long freezeEndTime = 0;
     public long plasmaEndTime = 0;
     public boolean inAcidZone = false;
+    public long lastVampireHealTime = 0; // Cho affix VAMPIRIC
+    public long lastFireZoneDamageTick = 0; // Cho skill Trail of Fire
 
     // Cache chỉ số sát thương của player – được EntityManager cập nhật mỗi frame
     // Dùng để phản ứng nguyên tố scale cùng progression của player
@@ -178,9 +192,10 @@ public abstract class Enemy implements gameproject.Renderable {
     }
 
     public void takeDamage(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
-        // 1. Áp dụng hệ số Chí mạng (x1.5)
+        // 1. Áp dụng hệ số Chí mạng (Cơ bản x1.5 + Thưởng từ Bloodlust Evolution)
         if (isCrit) {
-            damage = (int) (damage * 1.5f);
+            float multiplier = 1.5f + (gameproject.meta.PlayerData.evoBloodlust * 0.10f);
+            damage = (int) (damage * multiplier);
         }
 
         // 2. Áp dụng hệ số Độc (x1.3) - Có thể cộng dồn với Chí mạng
@@ -211,7 +226,24 @@ public abstract class Enemy implements gameproject.Renderable {
         takeDamage(damage, false, vfxManager, currentTime);
     }
 
+    public void takeDamageDirect(int damage, boolean isCrit, VFXManager vfxManager, long currentTime) {
+        takeDamage(damage, isCrit, vfxManager, currentTime);
+    }
+
     public void takeDamageBase(int damage, VFXManager vfxManager, long currentTime, Color textColor) {
+        // Xử lý Affix SHIELDED: Chặn 3 hit đầu tiên
+        if (isElite && eliteAffix == EliteAffix.SHIELDED && shieldHits > 0) {
+            shieldHits--;
+            if (vfxManager != null) {
+                vfxManager.addDamageText(this.x + 15, this.y, 0, currentTime, new Color(100, 200, 255));
+                // Thêm hiệu ứng vỡ khiên nếu hit cuối
+                if (shieldHits <= 0) {
+                    vfxManager.spawnDeathParticles(x + size / 2, y + size / 2, currentTime, new Color(0, 150, 255));
+                }
+            }
+            return;
+        }
+
         this.hp -= damage;
         hitFlashEndTime = currentTime + 80; // Hit flash 80ms
         if (vfxManager != null) {
@@ -286,7 +318,24 @@ public abstract class Enemy implements gameproject.Renderable {
             int drawW = size + 20;
             int drawH = size + 20;
 
-            // 1. Hiệu ứng Blood Moon Aura (Vòng tròn đỏ dưới chân)
+            // 1. Hiệu ứng Elite Glow (Hào quang màu rực rỡ theo Affix)
+            if (isElite) {
+                float pulse = (float) (Math.sin(now / 150.0) * 0.2f + 0.8f);
+                Color auraColor = new Color(255, 215, 0); // Mặc định vàng
+                if (eliteAffix != null) {
+                    switch (eliteAffix) {
+                        case EXPLOSIVE: auraColor = new Color(255, 100, 0); break;
+                        case SHIELDED:  auraColor = new Color(0, 180, 255); break;
+                        case SPLITTING: auraColor = new Color(255, 0, 255); break;
+                        case VAMPIRIC:  auraColor = new Color(0, 255, 100); break;
+                        case BERSERKER: auraColor = new Color(255, 50, 50); break;
+                    }
+                }
+                g2d.setColor(new Color(auraColor.getRed(), auraColor.getGreen(), auraColor.getBlue(), (int) (100 * pulse * alpha)));
+                g2d.fillOval(drawX - 10, drawY - 10, drawW + 20, drawH + 20);
+            }
+
+            // 2. Hiệu ứng Blood Moon Aura (Vòng tròn đỏ dưới chân)
             if (gameproject.state.PlayingState.activeEvent == gameproject.state.PlayingState.EventType.BLOOD_MOON &&
                     gameproject.state.PlayingState.eventPhase == gameproject.state.PlayingState.EventPhase.ACTIVE
                     && !isBoss) {
@@ -339,6 +388,8 @@ public abstract class Enemy implements gameproject.Renderable {
     }
 
     public String getName() {
-        return isBoss ? "ELITE BOSS" : "ENEMY";
+        if (isBoss) return "ELITE BOSS";
+        if (isElite) return "ELITE ENEMY";
+        return "ENEMY";
     }
 }

@@ -5,7 +5,7 @@ import java.util.ArrayList;
 
 public class AssaultRifle extends Weapon {
     public AssaultRifle() {
-        super("Assault Rifle", 1.1f, 300, true, 450f);
+        super("Assault Rifle", 1.05f, 350, true, 350f);
     }
 
     @Override
