@@ -69,7 +69,8 @@ public class WeaponSelectState implements State {
                     if (selected instanceof HellfireBoomstick ||
                             selected instanceof Railgun ||
                             selected instanceof LightningGun) {
-                        gameproject.meta.AchievementManager.getInstance().onEvolvedWeapon(selected.getClass().getSimpleName());
+                        gameproject.meta.AchievementManager.getInstance()
+                                .onEvolvedWeapon(selected.getClass().getSimpleName());
                     }
 
                     gameproject.SoundManager.play("shoot"); // Âm thanh xác nhận

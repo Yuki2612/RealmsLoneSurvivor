@@ -32,9 +32,12 @@ public class Projectile {
     public boolean isHoming = false;
     public gameproject.Player targetPlayer = null;
     public float homingTurnSpeed = 0.05f;
-    
+
     // THÊM: Hỗ trợ khói/ma tím
     public boolean isPurpleGhost = false;
+
+    // THÊM: Hỗ trợ hình ảnh cho đạn
+    public String spriteKey = null;
 
     public gameproject.entity.Enemy ignoredEnemy = null;
 
@@ -62,21 +65,22 @@ public class Projectile {
             float targetDx = (targetPlayer.getX() + targetPlayer.SIZE / 2) - x;
             float targetDy = (targetPlayer.getY() + targetPlayer.SIZE / 2) - y;
             float dist = (float) Math.sqrt(targetDx * targetDx + targetDy * targetDy);
-            
+
             if (dist > 0) {
                 targetDx /= dist;
                 targetDy /= dist;
-                
+
                 // Nới lỏng quỹ đạo từ từ (Lerp hướng)
                 float currentSpeed = (float) Math.sqrt(speedX * speedX + speedY * speedY);
-                if (currentSpeed == 0) currentSpeed = 1;
-                
+                if (currentSpeed == 0)
+                    currentSpeed = 1;
+
                 float dirX = speedX / currentSpeed;
                 float dirY = speedY / currentSpeed;
-                
+
                 dirX += (targetDx - dirX) * homingTurnSpeed;
                 dirY += (targetDy - dirY) * homingTurnSpeed;
-                
+
                 // Chuẩn hóa lại
                 float newDist = (float) Math.sqrt(dirX * dirX + dirY * dirY);
                 speedX = (dirX / newDist) * currentSpeed;
@@ -97,6 +101,7 @@ public class Projectile {
     }
 
     public boolean isFairyBullet = false;
+    public boolean isPriestBullet = false;
 
     public void draw(Graphics g) {
         int drawX = (int) Math.round(x);
@@ -119,21 +124,35 @@ public class Projectile {
             g2d.setColor(new Color(180, 255, 180));
             g2d.fillOval(drawX, drawY, size, size);
             g2d.dispose();
+        } else if (isPriestBullet) {
+            // Viên đạn phát sáng vàng (Boss Priest)
+            Graphics2D g2d = (Graphics2D) g.create();
+            int glowSize = size + 12;
+            g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.25f));
+            g2d.setColor(new Color(255, 255, 100));
+            g2d.fillOval(drawX - 6, drawY - 6, glowSize, glowSize);
+            g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
+            g2d.setColor(new Color(220, 220, 50));
+            g2d.fillOval(drawX - 3, drawY - 3, size + 6, size + 6);
+            g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 1.0f));
+            g2d.setColor(new Color(255, 255, 200));
+            g2d.fillOval(drawX, drawY, size, size);
+            g2d.dispose();
         } else if (isPurpleGhost) {
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-            
-            java.awt.geom.Point2D center = new java.awt.geom.Point2D.Float(drawX + size/2f, drawY + size/2f);
+
+            java.awt.geom.Point2D center = new java.awt.geom.Point2D.Float(drawX + size / 2f, drawY + size / 2f);
             float radius = size / 2f + 8f;
-            float[] dist = {0.0f, 0.6f, 1.0f};
-            Color[] colors = {new Color(255, 150, 255), new Color(150, 0, 255), new Color(50, 0, 100, 0)};
+            float[] dist = { 0.0f, 0.6f, 1.0f };
+            Color[] colors = { new Color(255, 150, 255), new Color(150, 0, 255), new Color(50, 0, 100, 0) };
             java.awt.RadialGradientPaint paint = new java.awt.RadialGradientPaint(center, radius, dist, colors);
             g2d.setPaint(paint);
             g2d.fillOval(drawX - 8, drawY - 8, size + 16, size + 16);
-            
+
             // Lõi đen ma thuật (Dark Core)
             g2d.setColor(new Color(20, 0, 30));
-            g2d.fillOval(drawX + size/4, drawY + size/4, size/2, size/2);
+            g2d.fillOval(drawX + size / 4, drawY + size / 4, size / 2, size / 2);
 
             g2d.dispose();
         } else if (isHellfire) {
@@ -158,6 +177,13 @@ public class Projectile {
             g.setColor(Color.CYAN);
             g.drawOval(drawX, drawY, size + 2, size + 2);
         } else {
+            if (spriteKey != null) {
+                java.awt.image.BufferedImage img = gameproject.ImageManager.get(spriteKey);
+                if (img != null) {
+                    g.drawImage(img, drawX, drawY, size, size, null);
+                    return;
+                }
+            }
             g.setColor(isEnemyBullet ? Color.ORANGE : Color.WHITE);
             g.fillOval(drawX, drawY, size, size);
             g.setColor(Color.BLACK);

@@ -5,6 +5,7 @@ import gameproject.weapon.Projectile;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -382,7 +383,7 @@ public class DarkFairy extends Enemy {
             Enemy enemy;
             int type = rand.nextInt(4);
             switch (type) {
-                case 0 -> enemy = new NormalEnemy(spawnX, spawnY, tier, timeBonus);
+                case 0 -> enemy = new NormalEnemy(spawnX, spawnY, tier, timeBonus, panel.currentMapConfig.mapId);
                 case 1 -> enemy = new ShooterEnemy(spawnX, spawnY, tier, timeBonus);
                 case 2 -> enemy = new WizardEnemy(spawnX, spawnY, tier, timeBonus);
                 default -> enemy = new AssassinEnemy(spawnX, spawnY, tier, timeBonus);
@@ -557,8 +558,9 @@ public class DarkFairy extends Enemy {
         // --- DEBUG HITBOX ---
         if (GamePanel.showHitboxes) {
             Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setColor(Color.GREEN);
-            g2d.drawRect((int) x, (int) y, size, size);
+            g2d.setColor(Color.RED);
+            Rectangle rect = getBounds();
+            g2d.drawRect(rect.x, rect.y, rect.width, rect.height);
             g2d.dispose();
         }
     }

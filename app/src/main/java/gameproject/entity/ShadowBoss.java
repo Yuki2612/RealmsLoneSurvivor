@@ -332,4 +332,13 @@ public class ShadowBoss extends Enemy {
             g.drawOval((int) x - 85, (int) y - 85, 170, 170);
         }
     }
+
+    @Override
+    public Rectangle getBounds() {
+        // TĂNG HITBOX & CĂN GIỮA TUYỆT ĐỐI cho Shadow Boss
+        // Boss này được vẽ tâm tại (x, y), nên hitbox phải bao quanh tâm đó
+        int hbW = (int) (size * 1.6f);
+        int hbH = (int) (size * 1.6f);
+        return new Rectangle((int) x - hbW / 2, (int) y - hbH / 2, hbW, hbH);
+    }
 }

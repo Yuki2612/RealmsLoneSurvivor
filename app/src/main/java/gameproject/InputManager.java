@@ -16,6 +16,7 @@ public class InputManager implements KeyListener, MouseListener, MouseMotionList
     public boolean rPressed = false;
     public boolean iPressed = false;
     public boolean showLargeMap = false;
+    public boolean enterPressed = false;
     public String typedKeySequence = "";
 
     private GamePanel game;
@@ -35,6 +36,7 @@ public class InputManager implements KeyListener, MouseListener, MouseMotionList
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) escPressed = true;
         if (e.getKeyCode() == KeyEvent.VK_R) rPressed = true;
         if (e.getKeyCode() == KeyEvent.VK_I) iPressed = true;
+        if (e.getKeyCode() == KeyEvent.VK_ENTER) enterPressed = true;
         if (e.getKeyCode() == KeyEvent.VK_M) showLargeMap = !showLargeMap;
         
         if (game.player != null && game.getCurrentState() instanceof PlayingState) {
@@ -47,6 +49,7 @@ public class InputManager implements KeyListener, MouseListener, MouseMotionList
         if (e.getKeyCode() == KeyEvent.VK_ESCAPE) escPressed = false;
         if (e.getKeyCode() == KeyEvent.VK_R) rPressed = false;
         if (e.getKeyCode() == KeyEvent.VK_I) iPressed = false;
+        if (e.getKeyCode() == KeyEvent.VK_ENTER) enterPressed = false;
         if (game.player != null && game.getCurrentState() instanceof PlayingState) {
             game.player.keyReleased(e);
         }

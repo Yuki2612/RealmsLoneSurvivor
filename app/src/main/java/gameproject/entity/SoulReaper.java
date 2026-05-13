@@ -293,13 +293,22 @@ public class SoulReaper extends Enemy {
         // HIỂN THỊ HITBOX (Dành cho chế độ Debug)
         if (GamePanel.showHitboxes) {
             g.setColor(Color.RED);
-            Rectangle rect = getPhysicsHitbox();
+            Rectangle rect = getBounds(); // Đã đổi từ physics sang bounds gây sát thương
             g.drawRect(rect.x, rect.y, rect.width, rect.height);
 
             // Tầm chém của Boss
             g.setColor(new Color(255, 0, 0, 100));
             g.drawOval((int) x - 120, (int) y - 120, 240, 240);
         }
+    }
+
+    @Override
+    public Rectangle getBounds() {
+        // TĂNG HITBOX & CĂN GIỮA TUYỆT ĐỐI cho Soul Reaper
+        // Boss này được vẽ tâm tại (x, y), nên hitbox phải bao quanh tâm đó
+        int hbW = (int) (size * 1.6f);
+        int hbH = (int) (size * 1.9f);
+        return new Rectangle((int) x - hbW / 2, (int) y - hbH / 2, hbW, hbH);
     }
 
     @Override

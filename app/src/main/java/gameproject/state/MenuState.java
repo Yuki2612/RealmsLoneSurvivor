@@ -10,33 +10,49 @@ public class MenuState implements State {
         if (game.input.mouseClicked) {
             int mx = game.input.mouseX;
             int my = game.input.mouseY;
-            
-            int btnW = 320;
-            int btnH = 50;
-            int btnX = (game.screenWidth - btnW) / 2;
-            int startY = game.screenHeight / 2 - 80;
-            int spacing = 62;
+            int sh = game.screenHeight;
 
-            if (mx >= btnX && mx <= btnX + btnW) {
-                if (my >= startY && my <= startY + btnH) {
-                    game.changeState(new CharacterSelectState());
-                } else if (my >= startY + spacing && my <= startY + spacing + btnH) {
-                    game.changeState(new StatsState());
-                } else if (my >= startY + spacing * 2 && my <= startY + spacing * 2 + btnH) {
-                    game.changeState(new SkillsState());
-                } else if (my >= startY + spacing * 3 && my <= startY + spacing * 3 + btnH) {
-                    game.changeState(new AchievementState());
-                } else if (my >= startY + spacing * 4 && my <= startY + spacing * 4 + btnH) {
-                    game.changeState(new SettingsState());
-                } else if (my >= startY + spacing * 5 && my <= startY + spacing * 5 + btnH) {
-                    game.changeState(new GuideState());
-                } else if (my >= startY + spacing * 6 && my <= startY + spacing * 6 + btnH) {
-                    gameproject.meta.PlayerData.save();
-                    System.exit(0);
-                }
+            int actionY = (int)(sh * 0.32f); 
+            if (actionY < 260) actionY = 260;
+            
+            int metaY = actionY + 90;
+            int mSpc = 55;
+            int exitY = sh - 70;
+            int uSpc = 45;
+
+            // --- Cluster 1: ACTION ---
+            if (checkHit(game, mx, my, 98, actionY, "START GAME", 38f)) {
+                game.changeState(new CharacterSelectState());
+            } 
+            // --- Cluster 2: META ---
+            else if (checkHit(game, mx, my, 125, metaY, "CHARACTER STATS", 18f)) {
+                game.changeState(new StatsState());
+            } else if (checkHit(game, mx, my, 125, metaY + mSpc, "SKILLS", 18f)) {
+                game.changeState(new SkillsState());
+            } else if (checkHit(game, mx, my, 125, metaY + mSpc * 2, "ACHIEVEMENTS", 18f)) {
+                game.changeState(new AchievementState());
             }
+            // --- Cluster 3: UTILITY ---
+            else if (checkHit(game, mx, my, 125, exitY - uSpc * 2, "SETTINGS", 18f)) {
+                game.changeState(new SettingsState());
+            } else if (checkHit(game, mx, my, 125, exitY - uSpc, "SURVIVAL GUIDE", 18f)) {
+                game.changeState(new GuideState());
+            } else if (checkHit(game, mx, my, 125, exitY, "EXIT TO DESKTOP", 18f)) {
+                gameproject.meta.PlayerData.save();
+                System.exit(0);
+            }
+
             game.input.clearClickAndKey();
         }
+    }
+
+    private boolean checkHit(GamePanel game, int mx, int my, int x, int y, String text, float fontSize) {
+        java.awt.Font font = gameproject.FontManager.getFont(fontSize);
+        java.awt.FontMetrics fm = game.getFontMetrics(font);
+        int tw = fm.stringWidth(text);
+        int th = fm.getHeight();
+        // Matching the hitbox logic in MenuUI
+        return mx >= x && mx <= x + tw && my >= y - th + 10 && my <= y + 10;
     }
 
     @Override

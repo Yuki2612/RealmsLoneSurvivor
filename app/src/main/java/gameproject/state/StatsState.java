@@ -76,6 +76,9 @@ public class StatsState implements State {
                 double dist = Math.sqrt(Math.pow(adjMx - node.cx, 2) + Math.pow(adjMy - node.cy, 2));
 
                 if (dist <= r) {
+                    // Nếu đã nâng cấp tối đa ô này rồi thì bỏ qua
+                    if (isNodeUnlocked(node)) continue;
+
                     if (node.parentIdx != -1 && !isNodeUnlocked(nodes[node.parentIdx]))
                         continue;
                     if (node.isEvolution && node.parentIdx2 != -1 && !isNodeUnlocked(nodes[node.parentIdx2]))
@@ -94,7 +97,7 @@ public class StatsState implements State {
                         }
                     } else {
                         int currentLv = getPlayerDataLevel(node.statIndex);
-                        if (currentLv == node.levelTarget - node.bonusAmount) {
+                        if (currentLv >= node.levelTarget - node.bonusAmount) {
                             int cost = calculateNodeCost(node, currentLv);
                             if (PlayerData.gold >= cost) {
                                 PlayerData.gold -= cost;
@@ -124,37 +127,41 @@ public class StatsState implements State {
         list.add(root);
         int rootIdx = 0;
 
-        // VITALITY
+        // 1. HEALTH (statIndex = 0)
         int lastHPIdx = rootIdx;
-        for (int i = 1; i <= 3; i++) {
-            StatNode n = new StatNode(0, 10, i * 10, cx, cy - i * 450, lastHPIdx, green, true);
+        int hpMajor1 = -1;
+        for (int i = 0; i < 3; i++) {
+            StatNode n = new StatNode(0, 1, i + 1, cx, cy - (i + 1) * 450, lastHPIdx, green, true);
             list.add(n);
             lastHPIdx = list.size() - 1;
+            if (i == 0) hpMajor1 = lastHPIdx;
         }
-        int hpMajor1 = 1;
 
-        // DAMAGE
+        // 2. DAMAGE (statIndex = 1)
         int lastMightIdx = rootIdx;
-        int mTarget = 1;
-        for (int g = 0; g < 4; g++) {
+        int mTarget = 0;
+        int mightMajor1 = -1;
+        for (int g = 0; g < 3; g++) { // 3 groups * 10 = 30
             for (int i = 0; i < 2; i++) {
-                mTarget++;
-                StatNode n = new StatNode(1, 1, mTarget, (int) (cx + 350 + g * 400 + i * 130),
+                mTarget += 2;
+                StatNode n = new StatNode(1, 2, mTarget, (int) (cx + 350 + g * 400 + i * 130),
                         (int) (cy - 350 - g * 400 - i * 130), lastMightIdx, red, false);
                 list.add(n);
                 lastMightIdx = list.size() - 1;
             }
-            mTarget += 3; // Reverted from +4 back to +3
-            StatNode major = new StatNode(1, 3, mTarget, (int) (cx + 650 + g * 400), (int) (cy - 650 - g * 400),
+            mTarget += 6;
+            StatNode major = new StatNode(1, 6, mTarget, (int) (cx + 650 + g * 400), (int) (cy - 650 - g * 400),
                     lastMightIdx, red, true);
             list.add(major);
             lastMightIdx = list.size() - 1;
+            if (g == 0) mightMajor1 = lastMightIdx;
         }
-        int mightMajor1 = 6;
 
+        // 3. CRIT (statIndex = 4)
         int lastCritIdx = rootIdx;
         int crTarget = 0;
-        for (int g = 0; g < 3; g++) { // Reduced from 4 to 3 groups for 15% max
+        int critMajor1 = -1;
+        for (int g = 0; g < 3; g++) {
             for (int i = 0; i < 2; i++) {
                 crTarget++;
                 StatNode n = new StatNode(4, 1, crTarget, cx + 450 + g * 450 + i * 140, cy, lastCritIdx, red, false);
@@ -165,12 +172,13 @@ public class StatsState implements State {
             StatNode major = new StatNode(4, 3, crTarget, cx + 750 + g * 450, cy, lastCritIdx, red, true);
             list.add(major);
             lastCritIdx = list.size() - 1;
+            if (g == 0) critMajor1 = lastCritIdx;
         }
-        int critMajor1 = 18;
 
-        // MOBILITY
+        // 4. MOBILITY (statIndex = 2)
         int lastSpeedIdx = rootIdx;
         int sTarget = 0;
+        int speedMajor1 = -1;
         for (int g = 0; g < 2; g++) {
             for (int i = 0; i < 2; i++) {
                 sTarget++;
@@ -184,11 +192,13 @@ public class StatsState implements State {
                     lastSpeedIdx, yellow, true);
             list.add(major);
             lastSpeedIdx = list.size() - 1;
+            if (g == 0) speedMajor1 = lastSpeedIdx;
         }
-        int speedMajor1 = 27; // Shifted from 30 due to -3 crit nodes
 
+        // 5. DASH (statIndex = 3)
         int lastDashIdx = rootIdx;
         int dTarget = 0;
+        int dashMajor1 = -1;
         for (int g = 0; g < 2; g++) {
             for (int i = 0; i < 2; i++) {
                 dTarget++;
@@ -200,17 +210,16 @@ public class StatsState implements State {
             StatNode major = new StatNode(3, 3, dTarget, cx - 750 - g * 450, cy, lastDashIdx, yellow, true);
             list.add(major);
             lastDashIdx = list.size() - 1;
+            if (g == 0) dashMajor1 = lastDashIdx;
         }
-        int dashMajor1 = 33; // Shifted from 36
 
-        // 6. FIRE RATE
+        // 6. FIRE RATE (statIndex = 5)
         int lastFireIdx = rootIdx;
         int frTarget = 0;
         int fireMajor1 = -1;
         for (int g = 0; g < 3; g++) {
             for (int i = 0; i < 2; i++) {
                 frTarget++;
-                // Tăng khoảng cách g*600 để tránh đè nhau
                 StatNode n = new StatNode(5, 1, frTarget, cx + 400 + g * 600 + i * 130, cy + 450 + i * 40 - 20,
                         lastFireIdx, red, false);
                 list.add(n);
@@ -221,7 +230,7 @@ public class StatsState implements State {
             list.add(major);
             lastFireIdx = list.size() - 1;
             if (g == 0)
-                fireMajor1 = lastFireIdx; // Lấy Major 1
+                fireMajor1 = lastFireIdx;
         }
 
         // EVOLUTIONS
@@ -258,14 +267,14 @@ public class StatsState implements State {
 
     private int calculateNodeCost(StatNode node, int currentLv) {
         if (node.statIndex == 0) {
-            if (node.levelTarget == 10)
+            if (node.levelTarget == 1)
                 return 3000;
-            if (node.levelTarget == 20)
+            if (node.levelTarget == 2)
                 return 7000;
-            if (node.levelTarget == 30)
+            if (node.levelTarget == 3)
                 return 12000;
         }
-        int[] bases = { 110, 320, 160, 130, 240, 280 };
+        int[] bases = { 110, 180, 160, 130, 240, 280 };
         int sum = 0;
         for (int i = 0; i < node.bonusAmount; i++)
             sum += (int) (bases[node.statIndex] * Math.pow(PRICE_MULTIPLIER, currentLv + i));
@@ -339,8 +348,8 @@ public class StatsState implements State {
         // Check for wealth_peak achievement
         int currentLv = getPlayerDataLevel(idx);
         boolean isMax = false;
-        if (idx == 0 && currentLv >= 30) isMax = true;
-        else if (idx == 1 && currentLv >= 20) isMax = true;
+         if (idx == 0 && currentLv >= 3) isMax = true;
+        else if (idx == 1 && currentLv >= 30) isMax = true;
         else if (idx == 2 && currentLv >= 10) isMax = true;
         else if (idx == 3 && currentLv >= 10) isMax = true;
         else if (idx == 4 && currentLv >= 15) isMax = true;

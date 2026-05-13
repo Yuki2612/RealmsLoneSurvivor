@@ -28,6 +28,12 @@ public class UpgradeManager {
     // Lưu 3 thẻ nâng cấp hiện tại trên màn hình
     public Upgrade[] currentUpgradeOptions;
 
+    private GamePanel game;
+
+    public UpgradeManager(GamePanel game) {
+        this.game = game;
+    }
+
     public void startNewGame(int startingLevel) {
         playerLevel = 1;
         currentExp = 0;
@@ -87,7 +93,7 @@ public class UpgradeManager {
         }
         Collections.shuffle(normals);
         while (normals.size() < 3)
-            normals.add(Upgrade.SHIELD); // Fallback an toàn
+            normals.add(Upgrade.HEALTH); // Fallback an toàn
         currentUpgradeOptions = new Upgrade[] { normals.get(0), normals.get(1), normals.get(2) };
     }
 
@@ -122,7 +128,7 @@ public class UpgradeManager {
 
         // 4. Fallback an toàn nếu không có đủ 3 lựa chọn
         while (options.size() < 3)
-            options.add(Upgrade.SHIELD);
+            options.add(Upgrade.HEALTH);
 
         currentUpgradeOptions = new Upgrade[] { options.get(0), options.get(1), options.get(2) };
     }
@@ -163,7 +169,7 @@ public class UpgradeManager {
             }
         } else {
             switch (upgrade) {
-                case SHIELD -> player.addHeart();
+                case HEALTH -> player.addMaxHeart();
                 case DAMAGE -> playerDamage += 5;
                 case FIRE_RATE -> currentWeapon.cooldown = (long) (currentWeapon.cooldown * 0.91);
                 case MOVE_SPEED -> player.upgradeSpeed(0.3f);

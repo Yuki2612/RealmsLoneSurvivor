@@ -22,7 +22,8 @@ public class HUD {
         int score = game.score;
         int waveCount = game.entityManager.waveCount;
         int playerDamage = game.upgradeManager.playerDamage;
-        long actualCooldown = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus(), player.getFrenzyFireRateBonus());
+        long actualCooldown = game.currentWeapon.getActualCooldown(player.getComboManager().getFireRateBonus(),
+                player.getFrenzyFireRateBonus());
         float shotsPerSec = 1000.0f / actualCooldown;
         int dps = (int) (playerDamage * game.currentWeapon.damageMultiplier * game.currentWeapon.getProjectilesPerShot()
                 * shotsPerSec);
@@ -92,7 +93,7 @@ public class HUD {
             g.drawString("S: " + PlayerData.soulStones, soulX - 2, goldY - 2);
         }
 
-        // Trái tim
+        // Trái tim (chỉ hiển thị HP hiện tại)
         java.awt.image.BufferedImage heartImg = ImageManager.get("heart");
         for (int i = 0; i < player.getHearts(); i++) {
             int hX = 70 + (i * 30);
@@ -146,7 +147,7 @@ public class HUD {
             for (Enemy e : enemies) {
                 if (e.isBoss && !e.isDying) {
                     int bBarW = 600;
-                    int bBarH = 20; 
+                    int bBarH = 20;
                     int bBarX = screenWidth / 2 - bBarW / 2;
                     int bBarY = 25;
 
@@ -161,7 +162,7 @@ public class HUD {
                     if (hpW > 0) {
                         g.setColor(new Color(220, 40, 40));
                         g.fillRoundRect(bBarX, bBarY, hpW, bBarH, 6, 6);
-                        
+
                         // Highlight đơn giản
                         g.setColor(new Color(255, 255, 255, 40));
                         g.fillRect(bBarX, bBarY, hpW, bBarH / 2);
@@ -182,7 +183,7 @@ public class HUD {
                     int hpTextW = g.getFontMetrics().stringWidth(hpText);
                     g.setColor(Color.WHITE);
                     g.drawString(hpText, screenWidth / 2 - hpTextW / 2, bBarY + bBarH - 5);
-                    
+
                     break;
                 }
             }
@@ -256,6 +257,65 @@ public class HUD {
         }
 
         drawMinimap(g, game, player, enemies);
+
+        // Vẽ mũi tên chỉ hướng Rune (Đặc biệt cho map Swamp)
+        drawRunePointer((Graphics2D) g, game, player);
+    }
+
+    private static void drawRunePointer(Graphics2D g2d, gameproject.GamePanel game, Player player) {
+        synchronized (game.entityManager.runeDrops) {
+            if (game.entityManager.runeDrops.isEmpty())
+                return;
+
+            // Tìm Rune gần nhất
+            gameproject.entity.RuneItem closest = null;
+            double minDist = Double.MAX_VALUE;
+            for (gameproject.entity.RuneItem ri : game.entityManager.runeDrops) {
+                double dx = ri.x - player.getX();
+                double dy = ri.y - player.getY();
+                double dist = dx * dx + dy * dy;
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = ri;
+                }
+            }
+
+            if (closest == null)
+                return;
+
+            // Tính toán hướng
+            float dx = closest.x - player.getX();
+            float dy = closest.y - player.getY();
+            float angle = (float) Math.atan2(dy, dx);
+
+            // Vẽ mũi tên ở vòng tròn quanh player (Screen Space)
+            int centerX = game.screenWidth / 2;
+            int centerY = game.screenHeight / 2;
+            int radius = 120; // Khoảng cách từ tâm người chơi
+
+            int ax = centerX + (int) (Math.cos(angle) * radius);
+            int ay = centerY + (int) (Math.sin(angle) * radius);
+
+            // Lưu trạng thái
+            java.awt.geom.AffineTransform old = g2d.getTransform();
+
+            g2d.translate(ax, ay);
+            g2d.rotate(angle);
+
+            // Vẽ mũi tên Cyan phát sáng (Hình tam giác cân nhọn hơn)
+            g2d.setColor(new Color(0, 255, 255, 200));
+            int[] px = { 25, -5, -5 }; // Kéo dài đỉnh
+            int[] py = { 0, 8, -8 }; // Thu hẹp cạnh đáy
+            g2d.fillPolygon(px, py, 3);
+
+            // Hiệu ứng viền
+            g2d.setColor(Color.WHITE);
+            g2d.setStroke(new java.awt.BasicStroke(1.2f));
+            g2d.drawPolygon(px, py, 3);
+
+            // Khôi phục trạng thái
+            g2d.setTransform(old);
+        }
     }
 
     private static void drawMinimap(Graphics g, gameproject.GamePanel game, Player player, ArrayList<Enemy> enemies) {
@@ -283,6 +343,17 @@ public class HUD {
 
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
+                // Vẽ ĐỊA HÌNH (Nước, v.v.)
+                String tileType = mm.getTileTypeAt(r, c);
+                if (tileType.equals("water")) {
+                    g.setColor(game.currentMapConfig.minimapWaterColor);
+                    int ox = mapX + (int) (c * MapManager.TILE_SIZE * scaleX);
+                    int oy = mapY + (int) (r * MapManager.TILE_SIZE * scaleY);
+                    int pointSize = isLarge ? 4 : 2;
+                    g.fillRect(ox, oy, pointSize, pointSize);
+                }
+
+                // Vẽ VẬT CẢN (Obstacles)
                 Obstacle obs = mm.getObstacleAt(r, c);
                 if (obs != null) {
                     if (obs instanceof Wall || obs instanceof Rock)
@@ -291,12 +362,14 @@ public class HUD {
                         g.setColor(new Color(34, 139, 34));
                     else if (obs instanceof WoodenCrate)
                         g.setColor(new Color(139, 69, 19));
+                    else if (obs instanceof Altar)
+                        g.setColor(new Color(180, 0, 255)); // Màu tím huyền bí cho Altar
                     else
                         g.setColor(Color.GRAY);
 
                     int ox = mapX + (int) (c * MapManager.TILE_SIZE * scaleX);
                     int oy = mapY + (int) (r * MapManager.TILE_SIZE * scaleY);
-                    int pointSize = isLarge ? 4 : 2;
+                    int pointSize = (obs instanceof Altar) ? (isLarge ? 8 : 4) : (isLarge ? 4 : 2);
                     g.fillRect(ox, oy, pointSize, pointSize);
                 }
             }
@@ -338,6 +411,17 @@ public class HUD {
                 int ey = mapY + (int) (et.y * scaleY);
                 int dotSize = isLarge ? 5 : 3;
                 g.fillRect(ex, ey, dotSize, dotSize);
+            }
+        }
+
+        // 3.6 Vẽ RUNE TRÊN MẶT ĐẤT (chấm xanh cyan)
+        synchronized (game.entityManager.runeDrops) {
+            g.setColor(Color.CYAN);
+            for (gameproject.entity.RuneItem ri : game.entityManager.runeDrops) {
+                int rx = mapX + (int) (ri.x * scaleX);
+                int ry = mapY + (int) (ri.y * scaleY);
+                int dotSize = isLarge ? 6 : 4;
+                g.fillOval(rx - dotSize / 2, ry - dotSize / 2, dotSize, dotSize);
             }
         }
 

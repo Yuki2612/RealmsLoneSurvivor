@@ -26,27 +26,27 @@ public class AssassinEnemy extends Enemy {
         switch (tier) {
             case 1 -> {
                 this.maxHp = 10;
-                this.baseSpeed = 1.1f;
+                this.baseSpeed = 0.9f;
                 this.invisCooldown = 300;
             }
             case 2 -> {
                 this.maxHp = 15;
-                this.baseSpeed = 1.4f;
+                this.baseSpeed = 1.2f;
                 this.invisCooldown = 270;
             }
             case 3 -> {
                 this.maxHp = 25;
-                this.baseSpeed = 1.7f;
+                this.baseSpeed = 1.5f;
                 this.invisCooldown = 240;
             }
             case 4 -> {
                 this.maxHp = 35;
-                this.baseSpeed = 2.0f;
+                this.baseSpeed = 1.8f;
                 this.invisCooldown = 210;
             }
             default -> {
                 this.maxHp = 50;
-                this.baseSpeed = 2.5f;
+                this.baseSpeed = 2.2f;
                 this.invisCooldown = 180;
                 this.tier = 5;
             }
@@ -96,7 +96,19 @@ public class AssassinEnemy extends Enemy {
         if (isInvisible) {
             Graphics2D g2d = (Graphics2D) g.create();
             g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-            java.awt.image.BufferedImage img = gameproject.ImageManager.get("enemy_assassin");
+            
+            // Hỗ trợ Animation khi tàng hình
+            long now = gameproject.GamePanel.getTickTime();
+            java.awt.image.BufferedImage[] anim = gameproject.ImageManager.getAnimation("enemy_assassin");
+            java.awt.image.BufferedImage img = null;
+            
+            if (anim != null && anim.length > 0) {
+                int index = (int) ((now / 150) % anim.length);
+                img = anim[index];
+            } else {
+                img = gameproject.ImageManager.get("enemy_assassin");
+            }
+
             if (img != null) {
                 g2d.drawImage(img, (int) x - 10, (int) y - 20, size + 20, size + 20, null);
             } else {

@@ -34,8 +34,8 @@ public class OrbitingOrbsSkill implements PassiveSkill {
 
         for (int i = 0; i < numOrbs; i++) {
             float angle = orbitAngle + (float) (i * 2 * Math.PI / numOrbs);
-            int ox = (int) (player.getX() + 20 + Math.cos(angle) * 90);
-            int oy = (int) (player.getY() + 20 + Math.sin(angle) * 90);
+            int ox = (int) (player.getX() + 20 + Math.cos(angle) * 140);
+            int oy = (int) (player.getY() + 20 + Math.sin(angle) * 140);
             Rectangle orbHitbox = new Rectangle(ox - 10, oy - 10, 20, 20);
 
             synchronized (enemies) {
@@ -45,7 +45,7 @@ public class OrbitingOrbsSkill implements PassiveSkill {
                         long lastHitTime = lastDamageTimes.getOrDefault(e, 0L);
                         if (currentTime - lastHitTime >= DAMAGE_INTERVAL_MS) {
                             e.takeDamage(dmg, vfxManager, currentTime);
-                            e.applyKnockback(ox, oy, 10f);
+                            e.applyKnockback(ox, oy, 5f);
                             // Cập nhật lại thời điểm chịu sát thương
                             lastDamageTimes.put(e, currentTime);
                         }
@@ -67,8 +67,8 @@ public class OrbitingOrbsSkill implements PassiveSkill {
         int numOrbs = Math.min(orbLevel, 5);
         for (int i = 0; i < numOrbs; i++) {
             float angle = orbitAngle + (float) (i * 2 * Math.PI / numOrbs);
-            int ox = (int) (player.getX() + 20 + Math.cos(angle) * 90);
-            int oy = (int) (player.getY() + 20 + Math.sin(angle) * 90);
+            int ox = (int) (player.getX() + 20 + Math.cos(angle) * 140);
+            int oy = (int) (player.getY() + 20 + Math.sin(angle) * 140);
             g.fillOval(ox - 10, oy - 10, 20, 20);
         }
     }

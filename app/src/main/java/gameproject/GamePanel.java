@@ -3,6 +3,7 @@ package gameproject;
 import javax.swing.JPanel;
 import java.awt.Dimension;
 import java.awt.Graphics;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -24,6 +25,7 @@ import gameproject.meta.PlayerData;
 import gameproject.meta.CharacterClass;
 import gameproject.environment.MapManager;
 import gameproject.environment.Building;
+import gameproject.ui.ParallaxBackground;
 
 public class GamePanel extends JPanel implements Runnable {
     public static GamePanel instance;
@@ -43,6 +45,7 @@ public class GamePanel extends JPanel implements Runnable {
     public UpgradeManager upgradeManager;
     public EntityManager entityManager;
     public VFXManager vfxManager;
+    public gameproject.ui.DialogueManager dialogueManager;
 
     public Player player;
     public Weapon currentWeapon;
@@ -60,6 +63,8 @@ public class GamePanel extends JPanel implements Runnable {
 
     public MapManager mapManager;
     public List<Building> buildings;
+    public gameproject.environment.MapConfig currentMapConfig;
+    public ParallaxBackground menuParallax;
 
     private State currentState;
     public int currentFPS = 0;
@@ -105,9 +110,10 @@ public class GamePanel extends JPanel implements Runnable {
         addMouseListener(input);
         addMouseMotionListener(input);
 
-        upgradeManager = new UpgradeManager();
         entityManager = new EntityManager();
         vfxManager = new VFXManager();
+        dialogueManager = new gameproject.ui.DialogueManager();
+        upgradeManager = new UpgradeManager(this);
         activeSkills = new ArrayList<>();
         buildings = new ArrayList<>();
         currentWeapon = new Pistol();
@@ -125,6 +131,7 @@ public class GamePanel extends JPanel implements Runnable {
         SoundManager.load("shield", "app/res/shield.wav");
         SoundManager.load("pickup", "app/res/pickup.wav");
         SoundManager.load("achievement", "app/res/achievement.wav");
+        SoundManager.load("water_splash", "app/res/water_splash.wav");
 
         // Load player hurt sounds (giả định có 3 file)
         for (int i = 1; i <= 3; i++) {
@@ -133,10 +140,15 @@ public class GamePanel extends JPanel implements Runnable {
 
         SoundManager.loadMusic("gamebgm1", "app/res/gamebgm1.wav");
         SoundManager.loadMusic("gamebgm2", "app/res/gamebgm2.wav");
+        SoundManager.loadMusic("gamebgm3", "app/res/gamebgm3.wav");
+        SoundManager.loadMusic("gamebgm4", "app/res/gamebgm4.wav");
         SoundManager.loadMusic("bossbgm", "app/res/bossbgm.wav");
+        SoundManager.loadMusic("bossbgm1", "app/res/bossbgm1.wav");
 
         FontManager.load("app/res/pixel_font.ttf");
         ImageManager.load("heart", "app/res/heart.png");
+        ImageManager.load("thumbnail", "app/res/thumbnail.png");
+        ImageManager.load("thumbnail1", "app/res/thumbnail1.png");
 
         int bgIndex = 1;
         while (true) {
@@ -152,13 +164,11 @@ public class GamePanel extends JPanel implements Runnable {
         ImageManager.load("skill_explosive", "app/res/skill_explosive.png");
         ImageManager.load("skill_explosive_bullets", "app/res/skill_explosive.png");
         ImageManager.load("player", "app/res/player.png");
+        
+        // Nạp 5 bộ Player
         for (int i = 1; i <= 5; i++) {
             ImageManager.load("player" + i, "app/res/player" + i + ".png");
-            ImageManager.load("enemy" + i, "app/res/enemy" + i + ".png");
-
             String prefix = "player" + i;
-            // NẠP ANIMATION LINH HOẠT: Ưu tiên đọc số frame từ tên file (ví dụ: _f15.png)
-            // Nếu không có, sẽ tự động dùng số frame mặc định bên dưới.
             ImageManager.loadAnimation(prefix + "_idle_side", "app/res/" + prefix + "_idle_side.png", 16);
             ImageManager.loadAnimation(prefix + "_run_side", "app/res/" + prefix + "_run_side.png", 10);
             ImageManager.loadAnimation(prefix + "_idle_down", "app/res/" + prefix + "_idle_down.png", 10);
@@ -166,6 +176,14 @@ public class GamePanel extends JPanel implements Runnable {
             ImageManager.loadAnimation(prefix + "_idle_up", "app/res/" + prefix + "_idle_up.png", 10);
             ImageManager.loadAnimation(prefix + "_run_up", "app/res/" + prefix + "_run_up.png", 12);
         }
+
+        // Nạp 10 bộ Enemy
+        for (int i = 1; i <= 10; i++) {
+            ImageManager.load("enemy" + i, "app/res/enemy" + i + ".png");
+            // Tự động tìm kiếm file _fX để nạp animation cho quái vật
+            ImageManager.loadAnimation("enemy" + i, "app/res/enemy" + i + ".png");
+        }
+
         for (int i = 1; i <= 3; i++) {
             String bKey = "boss" + i;
             ImageManager.load(bKey, "app/res/" + bKey + ".png");
@@ -184,6 +202,14 @@ public class GamePanel extends JPanel implements Runnable {
         ImageManager.loadAnimation("boss4_teleport", "app/res/boss4_teleport.png");
         ImageManager.loadAnimation("boss4_transform", "app/res/boss4_transform.png");
 
+        // Nạp hoạt ảnh cho các loại quái chuyên biệt
+        ImageManager.loadAnimation("enemy_wizard", "app/res/enemy_wizard.png");
+        ImageManager.loadAnimation("enemy_assassin", "app/res/enemy_assassin.png");
+        ImageManager.loadAnimation("enemy_shooter", "app/res/enemy_shooter.png");
+        ImageManager.loadAnimation("enemy_spawner", "app/res/enemy_spawner.png");
+        ImageManager.loadAnimation("mimic_f", "app/res/mimic.png");
+        ImageManager.load("egg", "app/res/egg.png");
+        ImageManager.load("projectile", "app/res/projectile.png");
 
         ImageManager.load("chest1", "app/res/chest1.png");
         ImageManager.load("chest2", "app/res/chest2.png");
@@ -198,18 +224,93 @@ public class GamePanel extends JPanel implements Runnable {
         ImageManager.load("treasure", "app/res/treasure.png");
         ImageManager.load("mimic", "app/res/mimic.png");
         ImageManager.load("boss_hud", "app/res/boss_hud.png");
-        ImageManager.load("enemy_wizard", "app/res/enemy_wizard.png");
-        ImageManager.load("enemy_assassin", "app/res/enemy_assassin.png");
-        ImageManager.load("enemy_shooter", "app/res/enemy_shooter.png");
+        ImageManager.load("rune", "app/res/rune.png");
+
+        // --- Nạp hoạt ảnh Altar ---
+        ImageManager.loadAnimation("altar1", "res/altar1_f4.png");
+
+        // Boss 6 - Swamp Priest
+        ImageManager.loadAnimation("boss6_walk1", "app/res/boss6_walk1_f6.png");
+        ImageManager.loadAnimation("boss6_walk2", "app/res/boss6_walk2_f6.png");
+        ImageManager.loadAnimation("boss6_attack1", "app/res/boss6_attack1_f6.png");
+        ImageManager.loadAnimation("boss6_attack2", "app/res/boss6_attack2_f6.png");
+        ImageManager.loadAnimation("boss6_attack3", "app/res/boss6_attack3_f6.png");
+        ImageManager.loadAnimation("boss6_teleport1", "app/res/boss6_teleport1_f4.png");
+        ImageManager.loadAnimation("boss6_teleport2", "app/res/boss6_teleport2_f4.png");
+        ImageManager.loadAnimation("boss6_transform1", "app/res/boss6_transform1_f6.png");
+        ImageManager.loadAnimation("boss6_transform2", "app/res/boss6_transform2_f2.png");
+
+        // Boss 7 - Swamp Cannon
+        ImageManager.loadAnimation("boss7_move", "app/res/boss7_move_f4.png");
+        ImageManager.loadAnimation("boss7_dash", "app/res/boss7_dash_f2.png");
+        ImageManager.loadAnimation("boss7_death", "app/res/boss7_death_f4.png");
+        ImageManager.loadAnimation("boss7_attack1", "app/res/boss7_attack1_f6.png");
+        ImageManager.loadAnimation("boss7_attack2", "app/res/boss7_attack2_f4.png");
+        ImageManager.loadAnimation("boss7_attack3", "app/res/boss7_attack3_f4.png");
+
+        // --- Tự động nạp các biến thể vật thể môi trường (grass1, tree1, rock1, v.v.) ---
+        String[] envTypes = { "grass", "tree", "rock", "woodencrate" };
+        for (String type : envTypes) {
+            int idx = 1;
+            while (true) {
+                String path = "app/res/" + type + idx + ".png";
+                if (new java.io.File(path).exists()) {
+                    ImageManager.load(type + idx, path);
+                    idx++;
+                } else
+                    break;
+            }
+        }
         
         ImageManager.load("shotgun", "app/res/shotgun.png");
         ImageManager.load("sniper_rifle", "app/res/sniper_rifle.png");
         ImageManager.load("assault_rifle", "app/res/assault_rifle.png");
 
+        // --- Nạp ảnh Parallax cho Menu ---
+        ImageManager.load("menu_parallax", "app/res/menu_background.png");
+        BufferedImage parallaxImg = ImageManager.get("menu_parallax");
+        if (parallaxImg != null) {
+            menuParallax = new ParallaxBackground(parallaxImg, screenWidth, screenHeight);
+        }
+
+        // --- Tự động nạp tài nguyên đặc trưng cho từng Map ---
+        for (gameproject.environment.MapType type : gameproject.environment.MapType.values()) {
+            String prefix = type.name().toLowerCase();
+            
+            // Tìm Background (Ưu tiên _ground sau đó _background)
+            String bgPath = "app/res/" + prefix + "_ground.png";
+            if (!new java.io.File(bgPath).exists()) bgPath = "app/res/" + prefix + "_background.png";
+            
+            if (new java.io.File(bgPath).exists()) {
+                ImageManager.load(prefix + "_background", bgPath);
+            }
+            
+            // Tìm Water (Ưu tiên _water sau đó _tile_water)
+            String waterPath = "app/res/" + prefix + "_water.png";
+            if (!new java.io.File(waterPath).exists()) waterPath = "app/res/" + prefix + "_tile_water.png";
+            
+            if (new java.io.File(waterPath).exists()) {
+                ImageManager.load(prefix + "_tile_water", waterPath);
+            }
+            
+            // Tìm Water Borders & Corners (Ưu tiên tên file người dùng: _waterborder)
+            String borderPath = "app/res/" + prefix + "_waterborder.png";
+            if (!new java.io.File(borderPath).exists()) borderPath = "app/res/" + prefix + "_water_border.png";
+            if (new java.io.File(borderPath).exists()) {
+                ImageManager.load(prefix + "_water_border", borderPath);
+            }
+            
+            String cornerPath = "app/res/" + prefix + "_watercorner.png";
+            if (!new java.io.File(cornerPath).exists()) cornerPath = "app/res/" + prefix + "_water_corner.png";
+            if (new java.io.File(cornerPath).exists()) {
+                ImageManager.load(prefix + "_water_corner", cornerPath);
+            }
+        }
+
         // Load Skill Icons
         for (gameproject.skill.Upgrade u : gameproject.skill.Upgrade.values()) {
             String fileName = u.name().toLowerCase();
-            if (u == gameproject.skill.Upgrade.SHIELD)
+            if (u == gameproject.skill.Upgrade.HEALTH)
                 fileName = "hp";
             else if (u == gameproject.skill.Upgrade.OPTICAL_SCOPE)
                 fileName = "range";
@@ -220,7 +321,7 @@ public class GamePanel extends JPanel implements Runnable {
         PlayerData.load();
 
         buildings = new ArrayList<>();
-        mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings);
+        mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings, gameproject.environment.MapConfig.getConfig(gameproject.environment.MapType.OUTSKIRTS));
 
         changeState(new MenuState());
 
@@ -250,13 +351,25 @@ public class GamePanel extends JPanel implements Runnable {
         } else if (currentState instanceof gameproject.state.PlayingState ||
                 currentState instanceof gameproject.state.LevelUpState ||
                 currentState instanceof gameproject.state.WeaponSelectState) {
-            // Logic nhạc trong gameplay
+            
+            String bgm1 = "gamebgm1";
+            String bgm2 = "gamebgm2";
+            String bossBgm = "bossbgm";
+
+            // Tùy chỉnh nhạc theo từng loại Map
+            if (currentMapConfig != null && currentMapConfig.type == gameproject.environment.MapType.SWAMP) {
+                bgm1 = "gamebgm3";
+                bgm2 = "gamebgm4"; // Đã có nhạc cho giai đoạn 2
+                bossBgm = "bossbgm1";
+            }
+
+            // Thực hiện phát nhạc dựa trên logic Wave và Boss
             if (entityManager != null && entityManager.activeBossCount > 0) {
-                SoundManager.playMusic("bossbgm");
-            } else if (entityManager != null && entityManager.waveCount >= 7) {
-                SoundManager.playMusic("gamebgm2");
+                SoundManager.playMusic(bossBgm);
+            } else if (entityManager != null && entityManager.waveCount >= 12) {
+                SoundManager.playMusic(bgm2);
             } else {
-                SoundManager.playMusic("gamebgm1");
+                SoundManager.playMusic(bgm1);
             }
         }
     }
@@ -265,16 +378,16 @@ public class GamePanel extends JPanel implements Runnable {
         return currentState;
     }
 
-    public void startNewGame() {
+    public void startNewGame(gameproject.environment.MapConfig mapConfig) {
+        this.currentMapConfig = mapConfig;
         resetTime();
         gameproject.state.PlayingState.resetEvents();
         CharacterClass charClass = PlayerData.selectedClass;
 
-        // Tạo mới bản đồ cho mỗi lượt chơi để tăng tính ngẫu nhiên (Roguelike
-        // experience)
+        // Tạo mới bản đồ dựa trên cấu hình map được chọn
         synchronized (buildings) {
             buildings.clear();
-            mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings);
+            mapManager = new MapManager(WORLD_WIDTH, WORLD_HEIGHT, buildings, mapConfig);
         }
 
         player = new Player(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, charClass);
@@ -295,9 +408,7 @@ public class GamePanel extends JPanel implements Runnable {
                 * charClass.damageMulti);
         entityManager.startNewGame(currentTime, PlayerData.debugStartWave);
 
-        if (totalBackgrounds > 0) {
-            currentBgKey = "background" + (new java.util.Random().nextInt(totalBackgrounds) + 1);
-        }
+        currentBgKey = mapConfig.backgroundKey;
 
         if (charClass.startingUpgrade != null) {
             upgradeManager.applyUpgrade(charClass.startingUpgrade, player, activeSkills, currentWeapon);
@@ -359,6 +470,12 @@ public class GamePanel extends JPanel implements Runnable {
                 if (currentState != null) {
                     currentState.update(this);
                 }
+                
+                // Luôn cập nhật Parallax nếu nó tồn tại (chủ yếu dùng cho Menu)
+                if (menuParallax != null) {
+                    menuParallax.update();
+                }
+
                 input.clearClickAndKey();
 
                 repaint();

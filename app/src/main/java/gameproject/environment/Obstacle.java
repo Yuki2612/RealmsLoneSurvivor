@@ -3,9 +3,12 @@ package gameproject.environment;
 import java.awt.Graphics2D;
 
 public abstract class Obstacle implements gameproject.Renderable {
-    protected int x, y;
+    public int x, y;
     protected int width, height;
     protected Hitbox hitbox; // ĐÃ ĐỔI: Sử dụng interface Hitbox
+
+    public int getX() { return x; }
+    public int getY() { return y; }
 
     public Obstacle(int x, int y, int width, int height) {
         this.x = x;

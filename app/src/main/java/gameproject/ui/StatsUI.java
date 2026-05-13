@@ -285,7 +285,7 @@ public class StatsUI {
             g2d.setFont(FontManager.getFont(14f)); g2d.setColor(new Color(200, 200, 230));
             String actualBonus = "";
             switch(node.statIndex) {
-                case 0 -> actualBonus = "+" + (node.bonusAmount / 10) + " HEART";
+                case 0 -> actualBonus = "+" + node.bonusAmount + " HEART";
                 case 1 -> actualBonus = "+" + node.bonusAmount + " DAMAGE";
                 case 2 -> actualBonus = "+" + (node.bonusAmount * 2) + "% SPEED";
                 case 3 -> actualBonus = "-" + (node.bonusAmount * 2) + "% DASH CD";
@@ -296,7 +296,7 @@ public class StatsUI {
             if (isNodeUnlocked(node)) { g2d.setColor(Color.GREEN); g2d.drawString("• MAXED", tx + 20, ty + 125); }
             else if (isParentUnlocked(node)) {
                 int currentLv = getPlayerDataLevel(node.statIndex);
-                if (currentLv == node.levelTarget - node.bonusAmount) {
+                if (currentLv >= node.levelTarget - node.bonusAmount) {
                     int cost = calculateNodeCost(node, currentLv);
                     g2d.setColor(gold >= cost ? Color.YELLOW : Color.RED);
                     g2d.drawString("• COST: " + cost + " GOLD", tx + 20, ty + 125);
@@ -307,11 +307,11 @@ public class StatsUI {
 
     private static int calculateNodeCost(StatsState.StatNode node, int currentLv) {
         if (node.statIndex == 0) {
-            if (node.levelTarget == 10) return 3000;
-            if (node.levelTarget == 20) return 7000;
-            if (node.levelTarget == 30) return 12000;
+            if (node.levelTarget == 1) return 3000;
+            if (node.levelTarget == 2) return 7000;
+            if (node.levelTarget == 3) return 12000;
         }
-        int[] bases = {110, 320, 160, 130, 240, 280};
+        int[] bases = {110, 180, 160, 130, 240, 280};
         int sum = 0;
         for (int i = 0; i < node.bonusAmount; i++) sum += (int)(bases[node.statIndex] * Math.pow(1.14, currentLv + i));
         return sum;

@@ -22,29 +22,29 @@ public class WizardEnemy extends Enemy {
 
         switch (tier) {
             case 1 -> {
-                this.maxHp = 30;
-                this.speed = 0.6f;
-                this.shootCooldown = 300;
+                this.maxHp = 25;
+                this.speed = 0.5f;
+                this.shootCooldown = 270; // Giảm ~10% từ 300
             }
             case 2 -> {
-                this.maxHp = 50;
+                this.maxHp = 40;
                 this.speed = 0.7f;
-                this.shootCooldown = 270;
+                this.shootCooldown = 235; // Giảm ~10% từ 260
             }
             case 3 -> {
-                this.maxHp = 80;
-                this.speed = 0.8f;
-                this.shootCooldown = 240;
+                this.maxHp = 70;
+                this.speed = 0.9f;
+                this.shootCooldown = 200; // Giảm ~10% từ 220
             }
             case 4 -> {
-                this.maxHp = 120;
-                this.speed = 0.9f;
-                this.shootCooldown = 210;
+                this.maxHp = 100;
+                this.speed = 1.1f;
+                this.shootCooldown = 160; // Giảm ~10% từ 180
             }
             default -> {
-                this.maxHp = 160;
-                this.speed = 1.0f;
-                this.shootCooldown = 180;
+                this.maxHp = 150;
+                this.speed = 1.3f;
+                this.shootCooldown = 125; // Giảm ~10% từ 140
                 this.tier = 5;
             }
         }
@@ -77,7 +77,7 @@ public class WizardEnemy extends Enemy {
     public java.util.List<Projectile> shoot() {
         if (canShoot) {
             canShoot = false;
-            Projectile p = new Projectile(x, y, targetPX, targetPY, 0.5f, 600f);
+            Projectile p = new Projectile(x, y, targetPX, targetPY, 0.35f, 600f); // Giảm tốc độ từ 0.5f
             p.isEnemyBullet = true;
             p.isExplosive = true;
             p.explosionRadius = 40 + (tier * 10);

@@ -2,7 +2,7 @@ package gameproject.skill;
 
 public enum Upgrade {
         // Nâng cấp chỉ số (Normal)
-        SHIELD("Extra Heart (+1 Max HP)", false, 10),
+        HEALTH("Extra Heart (+1 Max HP)", false, 10),
         DAMAGE("Might (+5 Damage)", false, 10),
         FIRE_RATE("Light Barrel (-9% Cooldown)", false, 10),
         MOVE_SPEED("Swift Boots (+0.3 Move Speed)", false, 10),

@@ -36,8 +36,8 @@ public class PoisonCloudSkill implements PassiveSkill {
                 }
 
                 float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.POISON_CLOUD, 0) * 0.05f);
-                // Lv1: 60px  Lv5: 140px
-                int radius = (int) ((40 + (level * 20)) * soulMulti);
+                // Lv1: 45px  Lv5: 105px
+                int radius = (int) ((30 + (level * 15)) * soulMulti);
                 Rectangle cloudBox = new Rectangle((int) c.x - radius, (int) c.y - radius, radius * 2, radius * 2);
                 synchronized (enemies) {
                     for (Enemy e : enemies) {
@@ -60,8 +60,8 @@ public class PoisonCloudSkill implements PassiveSkill {
         synchronized (clouds) {
             for (Cloud c : clouds) {
                 float soulMulti = 1.0f + (gameproject.meta.PlayerData.skillSoulLevels.getOrDefault(Upgrade.POISON_CLOUD, 0) * 0.05f);
-                // Lv1: 60px  Lv5: 140px
-                int radius = (int) ((40 + (level * 20)) * soulMulti);
+                // Lv1: 45px  Lv5: 105px
+                int radius = (int) ((30 + (level * 15)) * soulMulti);
                 g.fillOval((int) c.x - radius, (int) c.y - radius, radius * 2, radius * 2);
             }
         }

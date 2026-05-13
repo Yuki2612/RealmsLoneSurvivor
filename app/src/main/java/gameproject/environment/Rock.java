@@ -5,8 +5,15 @@ import java.awt.Graphics2D;
 
 public class Rock extends Obstacle {
 
+    private String spriteKey = "rock";
+
     public Rock(int x, int y, int width, int height) {
+        this(x, y, width, height, "rock");
+    }
+
+    public Rock(int x, int y, int width, int height, String spriteKey) {
         super(x, y, width, height);
+        this.spriteKey = spriteKey;
         // Dịch hitbox xuống chân đá cho thực tế hơn trong Top-down
         this.hitbox = new AABBHitbox(x + 5, y + height * 0.4f, width - 10, height * 0.6f);
     }
@@ -30,7 +37,7 @@ public class Rock extends Obstacle {
         int dx = x;
         int dy = y;
 
-        java.awt.image.BufferedImage img = gameproject.ImageManager.get("rock");
+        java.awt.image.BufferedImage img = gameproject.ImageManager.get(spriteKey);
         if (img != null) {
             g.drawImage(img, dx - 8, dy - 8, width + 16, height + 16, null);
         } else {

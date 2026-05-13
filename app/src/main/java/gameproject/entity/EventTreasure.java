@@ -34,7 +34,8 @@ public class EventTreasure {
     }
 
     public void interact(GamePanel panel) {
-        if (opened) return;
+        if (opened)
+            return;
         opened = true;
 
         long currentTime = GamePanel.getTickTime();
@@ -42,17 +43,18 @@ public class EventTreasure {
         if (chance < 0.75) { // Tỉ lệ phần thưởng 75%, Mimic 25%
             // Reward: Rơi vật phẩm hoặc nâng cấp trực tiếp
             SoundManager.play("pickup");
-            
-            // Tỉ lệ nhận nâng cấp đặc biệt (10%) - Mở menu chọn nâng cấp chỉ số ngay lập tức
+
+            // Tỉ lệ nhận nâng cấp đặc biệt (10%) - Mở menu chọn nâng cấp chỉ số ngay lập
+            // tức
             if (Math.random() < 0.1) {
                 panel.triggerNormalUpgrade();
                 panel.vfxManager.showWaveBanner("STAT UPGRADE GRANTED!", java.awt.Color.YELLOW, currentTime);
             } else {
                 // Rơi Vàng và Linh hồn bằng hàm chuẩn của game
-                int goldAmount = 60 + (int)(Math.random() * 60);
+                int goldAmount = 60 + (int) (Math.random() * 60);
                 synchronized (panel.entityManager.resourceDrops) {
                     panel.entityManager.spawnResource(x, y, ResourceDrop.Type.GOLD, goldAmount, currentTime, 15000);
-                    
+
                     // Rơi Linh hồn (25% tỉ lệ)
                     if (Math.random() < 0.25) {
                         panel.entityManager.spawnResource(x, y, ResourceDrop.Type.SOUL, 5, currentTime, 15000);

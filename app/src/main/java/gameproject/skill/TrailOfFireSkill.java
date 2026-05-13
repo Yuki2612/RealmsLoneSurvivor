@@ -26,7 +26,10 @@ public class TrailOfFireSkill implements PassiveSkill {
         float minSpawnDist = Math.max(25, 50 - (fireLevel * 5));
 
         if (player.isMoving() && distSq > minSpawnDist * minSpawnDist) {
-            vfxManager.addFireTrail(player.getX() + 5, player.getY() + 5, currentTime);
+            String tileType = GamePanel.instance.mapManager.getTileTypeAtWorld(player.getX() + 12, player.getY() + 12);
+            if (!tileType.equals("water")) {
+                vfxManager.addFireTrail(player.getX() + 5, player.getY() + 5, currentTime);
+            }
             lastX = player.getX();
             lastY = player.getY();
         }

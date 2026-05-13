@@ -42,19 +42,20 @@ public class ImageManager {
             file = new File("app/" + path);
         }
 
-        // LOGIC THÔNG MINH: Nếu không thấy file chính xác, thử tìm file có hậu tố _f hoặc tên tương tự (không phân biệt hoa thường)
+        // LOGIC THÔNG MINH: Nếu không thấy file chính xác, thử tìm file có hậu tố _f
+        // hoặc tên tương tự (không phân biệt hoa thường)
         if (!file.exists()) {
             String dirPath = file.getParent();
             if (dirPath == null) {
                 dirPath = "app/res";
             }
             File directory = new File(dirPath);
-            
+
             if (directory.exists() && directory.isDirectory()) {
                 String nameOnly = file.getName().toLowerCase();
                 if (nameOnly.contains("."))
                     nameOnly = nameOnly.substring(0, nameOnly.lastIndexOf("."));
-                
+
                 final String searchPrefix = nameOnly + "_f";
                 File[] matchingFiles = directory.listFiles((d, name) -> {
                     String lowerName = name.toLowerCase();
@@ -77,7 +78,7 @@ public class ImageManager {
 
             int framesCount = defaultFrames;
             String fileName = file.getName().toLowerCase();
-            
+
             // Tìm vị trí chữ 'f' cuối cùng (để tránh nhầm với 'f' trong tên file khác)
             int fIndex = fileName.lastIndexOf("f");
             if (fIndex != -1) {
@@ -123,10 +124,14 @@ public class ImageManager {
                 for (int y = 0; y < h; y++) {
                     for (int x = 0; x < currentFrameW; x++) {
                         if (((rawFrames[i].getRGB(x, y) >> 24) & 0xff) > 10) {
-                            if (x < fMinX) fMinX = x;
-                            if (x > fMaxX) fMaxX = x;
-                            if (y < globalMinY) globalMinY = y;
-                            if (y > globalMaxY) globalMaxY = y;
+                            if (x < fMinX)
+                                fMinX = x;
+                            if (x > fMaxX)
+                                fMaxX = x;
+                            if (y < globalMinY)
+                                globalMinY = y;
+                            if (y > globalMaxY)
+                                globalMaxY = y;
                             frameHasPixel = true;
                             anyPixelFound = true;
                         }
@@ -144,22 +149,22 @@ public class ImageManager {
             if (anyPixelFound) {
                 int finalW = maxContentW + 4; // Thêm chút padding
                 int finalH = globalMaxY - globalMinY + 5;
-                globalMinY = Math.max(0, globalMinY - 2);
+                int safeMinY = Math.max(0, globalMinY - 2);
+                int safeH = Math.min(h - safeMinY, finalH);
 
                 for (int i = 0; i < framesCount; i++) {
                     BufferedImage centeredFrame = new BufferedImage(finalW, finalH, BufferedImage.TYPE_INT_ARGB);
                     Graphics2D g2 = centeredFrame.createGraphics();
-                    
+
                     if (frameMaxX[i] >= frameMinX[i]) {
                         int contentW = frameMaxX[i] - frameMinX[i] + 1;
                         int destX = (finalW - contentW) / 2; // Căn giữa chiều ngang
                         int sourceX = frameMinX[i];
-                        int sourceY = globalMinY;
-                        
-                        g2.drawImage(rawFrames[i], 
-                            destX, 0, destX + contentW, finalH,
-                            sourceX, sourceY, sourceX + contentW, sourceY + finalH, 
-                            null);
+
+                        g2.drawImage(rawFrames[i],
+                                destX, 0, destX + contentW, safeH,
+                                sourceX, safeMinY, sourceX + contentW, safeMinY + safeH,
+                                null);
                     }
                     g2.dispose();
                     anim[i] = centeredFrame;
@@ -175,7 +180,14 @@ public class ImageManager {
     }
 
     public static BufferedImage get(String name) {
-        return images.get(name);
+        BufferedImage img = images.get(name);
+        if (img == null && animations.containsKey(name)) {
+            BufferedImage[] anim = animations.get(name);
+            if (anim != null && anim.length > 0) {
+                return anim[0];
+            }
+        }
+        return img;
     }
 
     public static BufferedImage[] getAnimation(String key) {

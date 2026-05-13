@@ -4,6 +4,7 @@ import gameproject.*;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
@@ -307,8 +308,8 @@ public class KingBoss extends Enemy {
         int royalTimeBonus = (int) (currentSurviveTime * 1.5f);
 
         // Triệu hồi 4 cận vệ bao quanh Boss với Tier đã tính toán
-        spawnedEnemies.add(new NormalEnemy(x - 80, y - 80, tier, royalTimeBonus));
-        spawnedEnemies.add(new NormalEnemy(x + 80, y - 80, tier, royalTimeBonus));
+        spawnedEnemies.add(new NormalEnemy(x - 80, y - 80, tier, royalTimeBonus, panel.currentMapConfig.mapId));
+        spawnedEnemies.add(new NormalEnemy(x + 80, y - 80, tier, royalTimeBonus, panel.currentMapConfig.mapId));
         spawnedEnemies.add(new ShooterEnemy(x - 80, y + 80, tier, royalTimeBonus));
         spawnedEnemies.add(new ShooterEnemy(x + 80, y + 80, tier, royalTimeBonus));
 
@@ -371,8 +372,9 @@ public class KingBoss extends Enemy {
         // --- HIỂN THỊ HITBOX ĐỂ DEBUG ---
         if (GamePanel.showHitboxes) {
             Graphics2D g2d = (Graphics2D) g.create();
-            g2d.setColor(Color.GREEN);
-            g2d.drawRect((int) x, (int) y, size, size);
+            g2d.setColor(Color.RED);
+            Rectangle rect = getBounds();
+            g2d.drawRect(rect.x, rect.y, rect.width, rect.height);
 
             if (currentState == State.ATTACKING_1) {
                 g2d.setColor(Color.RED);

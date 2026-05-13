@@ -9,6 +9,7 @@ public class GameWindow {
 
         jframe.setUndecorated(true);
         jframe.setExtendedState(JFrame.MAXIMIZED_BOTH);
+        jframe.setTitle("REALMS: LONE SURVIVOR");
 
         jframe.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         jframe.add(gamePanel);

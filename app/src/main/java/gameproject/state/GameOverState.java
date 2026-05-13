@@ -17,6 +17,7 @@ public class GameOverState implements State {
     private final String weaponName;
     private final List<String> upgradeLines;
     private final String characterName;
+    private final gameproject.environment.MapConfig mapConfig;
     private long startTime;
     private final long inputDelay = 0; // No cooldown
 
@@ -26,6 +27,7 @@ public class GameOverState implements State {
         this.surviveTime = gameproject.GamePanel.instance.surviveTimeSeconds;
         this.weaponName = weaponName;
         this.characterName = player.getCharClass().name;
+        this.mapConfig = gameproject.GamePanel.instance.currentMapConfig;
         this.upgradeLines = new ArrayList<>();
         this.startTime = gameproject.GamePanel.getTickTime();
 
@@ -57,7 +59,7 @@ public class GameOverState implements State {
         if (game.input.rPressed) {
             if (gameproject.GamePanel.getTickTime() - startTime > inputDelay) {
                 game.input.clearClickAndKey();
-                game.startNewGame();
+                game.startNewGame(mapConfig);
                 return;
             }
         }
@@ -131,7 +133,8 @@ public class GameOverState implements State {
         drawStat(g2d, "Score:", "" + score, bx + 320, drawY, Color.YELLOW);
         drawStat(g2d, "Wave:", "" + wave, bx + 580, drawY, Color.ORANGE);
         drawY += 50;
-        drawStat(g2d, "Arsenal:", weaponName, bx + 60, drawY, new Color(255, 100, 100));
+        drawStat(g2d, "Weapon:", weaponName, bx + 60, drawY, new Color(255, 100, 100));
+        drawStat(g2d, "Map:", mapConfig.name, bx + 320, drawY, new Color(150, 150, 255));
         drawStat(g2d, "Time:", formatTime(surviveTime), bx + 580, drawY, Color.GREEN);
 
         g2d.setColor(new Color(255, 50, 50, 30));

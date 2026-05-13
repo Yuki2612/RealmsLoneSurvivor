@@ -23,28 +23,28 @@ public class ShooterEnemy extends Enemy {
         switch (tier) {
             case 1 -> {
                 this.maxHp = 15;
-                this.speed = 0.8f;
-                this.shootCooldown = 240;
+                this.speed = 0.7f;
+                this.shootCooldown = 215; // Giảm ~10% từ 240
             }
             case 2 -> {
                 this.maxHp = 25;
-                this.speed = 1.0f;
-                this.shootCooldown = 210;
+                this.speed = 0.9f;
+                this.shootCooldown = 190; // Giảm ~10% từ 210
             }
             case 3 -> {
                 this.maxHp = 40;
-                this.speed = 1.2f;
-                this.shootCooldown = 180;
+                this.speed = 1.1f;
+                this.shootCooldown = 160; // Giảm ~10% từ 180
             }
             case 4 -> {
                 this.maxHp = 60;
-                this.speed = 1.5f;
-                this.shootCooldown = 150;
+                this.speed = 1.3f;
+                this.shootCooldown = 135; // Giảm ~10% từ 150
             }
             default -> {
                 this.maxHp = 80;
-                this.speed = 1.8f;
-                this.shootCooldown = 120;
+                this.speed = 1.5f;
+                this.shootCooldown = 110; // Giảm ~10% từ 120
                 this.tier = 5;
             }
         }
@@ -77,9 +77,11 @@ public class ShooterEnemy extends Enemy {
     public ArrayList<Projectile> shoot() {
         if (canShoot) {
             canShoot = false;
-            float bulletSpeed = 0.4f + (tier * 0.05f);
+            float bulletSpeed = 0.3f + (tier * 0.04f); // Giảm tốc độ bay của đạn
             Projectile p = new Projectile(x, y, targetPX, targetPY, bulletSpeed, 800f);
             p.isEnemyBullet = true;
+            p.spriteKey = "projectile";
+            p.size = 20;
             p.damage = 1;
             return new ArrayList<>(java.util.List.of(p));
         }

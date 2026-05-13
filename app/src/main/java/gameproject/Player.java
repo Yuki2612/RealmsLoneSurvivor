@@ -20,6 +20,9 @@ public class Player implements Renderable {
     private float x, y;
     public static final int SIZE = 25;
     private CharacterClass charClass;
+    private boolean isInWater = false;
+    private long lastWaterSplashTime = 0;
+    private float lastWaterSplashX, lastWaterSplashY;
 
     @Override
     public void render(Graphics2D g) {
@@ -31,11 +34,11 @@ public class Player implements Renderable {
         return y + SIZE;
     }
 
-    private float speed = 4f;
+    private float speed = 3.5f;
     private long dashCooldown = 2000;
 
     private int hearts = 3;
-    private final int MAX_HEARTS = 15;
+    private int maxHearts = 5;
     private long invulnerableUntil = 0;
 
     // Evolution Buffs
@@ -77,12 +80,15 @@ public class Player implements Renderable {
     private float slowMultiplier = 1.0f;
     private long slowEndTime = 0;
 
+    private boolean isCarryingRune = false;
+
     public Player(float startX, float startY, CharacterClass charClass) {
         this.x = startX;
         this.y = startY;
         this.dashCooldown = (long) (2000 * (1.0f - PlayerData.statDashLevel * 0.02f));
         this.lastDashTime = -dashCooldown;
-        this.hearts = charClass.baseHp + (PlayerData.statHealthLevel / 10);
+        this.maxHearts = charClass.baseHp + PlayerData.statHealthLevel;
+        this.hearts = this.maxHearts;
         this.speed = (4.0f * charClass.speedMulti) * (1.0f + PlayerData.statSpeedLevel * 0.02f);
         this.comboManager = new ComboManager();
         this.charClass = charClass;
@@ -134,6 +140,15 @@ public class Player implements Renderable {
         comboManager.update();
         boolean isMoving = false;
         String nextDir = animDir;
+
+        // --- MÔI TRƯỜNG: LÀM CHẬM KHI ĐI TRONG NƯỚC ---
+        float pCenterX = x + SIZE / 2f;
+        float pCenterY = y + SIZE / 2f;
+        String tileType = game.mapManager.getTileTypeAtWorld(pCenterX, pCenterY);
+        isInWater = tileType.equals("water");
+        if (isInWater) {
+            applySlow(0.7f, 100); // Giảm 30% tốc độ (còn 70%)
+        }
 
         if (isDashing) {
             if (gameproject.GamePanel.getTickTime() - dashStartTime >= DASH_DURATION) {
@@ -253,6 +268,60 @@ public class Player implements Renderable {
         setState(isMoving ? PlayerState.RUN : PlayerState.IDLE, nextDir);
         if (activeAnim != null)
             activeAnim.update();
+
+        // 6. KIỂM TRA THẢ RUNE TẠI BÀN THỜ
+        if (isCarryingRune) {
+            for (gameproject.environment.Obstacle obs : game.mapManager.getAllObstacles()) {
+                if (obs instanceof gameproject.environment.Altar) {
+                    gameproject.environment.Altar altar = (gameproject.environment.Altar) obs;
+                    float distSq = (float) ((x + SIZE / 2 - (altar.x + 32)) * (x + SIZE / 2 - (altar.x + 32)) +
+                            (y + SIZE / 2 - (altar.y + 32)) * (y + SIZE / 2 - (altar.y + 32)));
+                    if (distSq < 360 * 360) { // Khoảng cách nộp Rune (Tăng gấp đôi từ 180)
+                        altar.addRune();
+                        isCarryingRune = false;
+                        String msg = "";
+                        switch (altar.getRuneCount()) {
+                            case 1:
+                                msg = "THE ALTAR PULSES... THE ANCIENT GUARDIAN'S SKIN BEGINS TO CRACK.";
+                                break;
+                            case 2:
+                                msg = "ANCIENT ENERGY FLOWS... THE GUARDIAN'S DEFENSES ARE WEAKENING.";
+                                break;
+                            case 3:
+                                msg = "THE SWAMP TREMBLES... THE GUARDIAN IS VULNERABLE!";
+                                break;
+                            case 4:
+                                msg = "THE SEALS ARE BROKEN! THE ANCIENT GUARDIAN IS EXPOSED!";
+                                break;
+                        }
+                        game.vfxManager.showWaveBanner(msg, Color.YELLOW, gameproject.GamePanel.getTickTime());
+                        SoundManager.play("powerup");
+                    }
+                }
+            }
+        }
+
+        // Phát âm thanh lội nước định kỳ và sinh particle bắn nước
+        if (isInWater && isMoving && !isDashing) {
+            long now = gameproject.GamePanel.getTickTime();
+
+            // Sinh particle bắn nước lùi về sau hướng di chuyển một chút cho chân thực
+            float offX = -lastDirX * 12;
+            float offY = -lastDirY * 8;
+            game.vfxManager.spawnWaterSplash(x + SIZE / 2 + offX, y + SIZE - 22 + offY, now);
+
+            float dx = x - lastWaterSplashX;
+            float dy = y - lastWaterSplashY;
+            float distSq = dx * dx + dy * dy;
+
+            // Phát âm thanh nếu di chuyển > 70px và đã qua > 900ms
+            if (distSq >= 4900 && now - lastWaterSplashTime >= 900) {
+                SoundManager.play("water_splash", 0.4f);
+                lastWaterSplashTime = now;
+                lastWaterSplashX = x;
+                lastWaterSplashY = y;
+            }
+        }
     }
 
     public void draw(Graphics g) {
@@ -267,12 +336,32 @@ public class Player implements Renderable {
             if (isDashing) {
                 g2d.setComposite(java.awt.AlphaComposite.getInstance(java.awt.AlphaComposite.SRC_OVER, 0.5f));
             }
+            if (isInWater) {
+                // Hiệu ứng vòng nước/bùn dưới chân: Điều chỉnh vị trí khớp với điểm bị cắt
+                // (drawSize - 18)
+                Graphics2D rippleG = (Graphics2D) g2d.create();
+                rippleG.setColor(new Color(20, 35, 15, 150)); // Màu xanh đen đậm của đầm lầy
+                rippleG.fillOval(drawX + 4, drawY + drawSize - 22, drawSize - 8, 12);
+                rippleG.dispose();
+
+                // Hiệu ứng lún xuống nước/bùn: Cắt bỏ phần dưới (từ bắp chân xuống)
+                g2d.setClip(drawX, drawY, drawSize, drawSize - 18);
+            }
             if (animDir.equals("side") && !facingRight) {
                 g2d.drawImage(img, drawX + drawSize, drawY, -drawSize, drawSize, null);
             } else {
                 g2d.drawImage(img, drawX, drawY, drawSize, drawSize, null);
             }
             g2d.dispose();
+
+            // Vẽ Rune trên đầu nếu đang mang
+            if (isCarryingRune) {
+                BufferedImage runeImg = ImageManager.get("rune");
+                if (runeImg != null) {
+                    // Tăng kích cỡ lên 32x32 và đẩy cao lên y - 45
+                    g.drawImage(runeImg, (int) x + SIZE / 2 - 16, (int) y - 45, 32, 32, null);
+                }
+            }
         } else {
             g.setColor(isDashing ? Color.CYAN : Color.RED);
             g.fillRect((int) Math.round(x), (int) Math.round(y), SIZE, SIZE);
@@ -335,8 +424,13 @@ public class Player implements Renderable {
     }
 
     public void addHeart() {
-        if (hearts < MAX_HEARTS)
+        if (hearts < maxHearts)
             hearts++;
+    }
+
+    public void addMaxHeart() {
+        maxHearts++;
+        addHeart(); // Heal 1 HP when gaining a max heart
     }
 
     public int getHearts() {
@@ -344,7 +438,7 @@ public class Player implements Renderable {
     }
 
     public int getMaxHearts() {
-        return MAX_HEARTS;
+        return maxHearts;
     }
 
     public float getSpeed() {
@@ -403,8 +497,17 @@ public class Player implements Renderable {
         return upgradeLevels.getOrDefault(u, 0);
     }
 
-    public void levelUpBreakthrough(Upgrade u) {
-        levelUpUpgrade(u);
+    public boolean isCarryingRune() {
+        return isCarryingRune;
+    }
+
+    public void setCarryingRune(boolean b) {
+        this.isCarryingRune = b;
+    }
+
+    public void collectRune(gameproject.entity.RuneItem ri) {
+        this.isCarryingRune = true;
+        SoundManager.play("powerup");
     }
 
     public int getBreakthroughLevel(Upgrade u) {

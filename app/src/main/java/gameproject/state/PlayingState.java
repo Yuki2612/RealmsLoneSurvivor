@@ -9,10 +9,11 @@ import gameproject.ui.CharacterStatsUI;
 import gameproject.skill.Upgrade;
 import gameproject.skill.PassiveSkill;
 import gameproject.environment.Building;
+import gameproject.event.EventManager;
 
 public class PlayingState implements State {
     public enum EventType {
-        NONE, ACID_RAIN, DARKNESS, MIMIC_MANIA, BLOOD_MOON
+        NONE, ACID_RAIN, DARKNESS, MIMIC_MANIA, BLOOD_MOON, TOXIC_WATERS, ALTAR_ASCENSION
     }
 
     public enum EventPhase {
@@ -25,7 +26,8 @@ public class PlayingState implements State {
     public static long eventEndTime = 0;
     private static long nextPhaseTime = 0;
     private static int lastCheckedWave = 0;
-    private static long lastDamageTick = 0;
+
+    private static EventManager eventManager = new EventManager();
 
     public static void resetEvents() {
         activeEvent = EventType.NONE;
@@ -33,11 +35,13 @@ public class PlayingState implements State {
         eventEndTime = 0;
         nextPhaseTime = 0;
         lastCheckedWave = 0;
-        lastDamageTick = 0;
         phantomClonesHit = 0;
+        eventManager.reset();
     }
 
     private boolean showStats = false;
+    private boolean dialogueTriggered = false;
+    private boolean enterKeyPrev = false;
     private boolean iKeyPrev = false;
     private boolean lostHealthThisRun = false;
     private int lastHearts = -1;
@@ -53,14 +57,41 @@ public class PlayingState implements State {
     private java.util.Set<Integer> visitedBuildings = new java.util.HashSet<>();
     private long buildingStayStart = -1;
     private long totalBuildingTime = 0;
+    private long waterStayStart = -1;
+    private boolean diverAchieved = false;
     private int damageTakenThisWave = 0;
     private int bulletsShotThisWave = 0;
     private int noHitWaveStreak = 0;
     private int noShootWaveStreak = 0;
-    private int currentWaveCheck = 0;
+    private int currentWaveCheck = 1;
+
+    // --- PERFORMANCE OPTIMIZATION (Part 1 & 2) ---
+    private java.util.List<gameproject.Renderable> renderList = new java.util.ArrayList<>(500);
+    private static final java.util.Comparator<gameproject.Renderable> Y_COMPARATOR = (a, b) -> Double
+            .compare(a.getBottomY(), b.getBottomY());
+
+    private float shakeOffsetDx = 0;
+    private float shakeOffsetDy = 0;
 
     @Override
     public void update(GamePanel game) {
+        // --- LOGIC HỘI THOẠI ---
+        if (game.dialogueManager.isActive()) {
+            game.dialogueManager.update();
+            if (game.input.enterPressed && !enterKeyPrev) {
+                game.dialogueManager.nextPace();
+            }
+            enterKeyPrev = game.input.enterPressed;
+            return;
+        }
+
+        // Kích hoạt hội thoại lần đầu (Outskirts)
+        if (!dialogueTriggered && game.surviveTimeSeconds == 0) {
+            triggerInitialDialogue(game);
+            dialogueTriggered = true;
+            return;
+        }
+
         if (game.input.escPressed) {
             if (showStats) {
                 showStats = false;
@@ -143,6 +174,23 @@ public class PlayingState implements State {
         } else {
             buildingStayStart = -1;
         }
+
+        // --- TRACK WATER STAY (SECRET: DIVER) ---
+        if (!diverAchieved) {
+            float pMidX = game.player.getX() + 12.5f;
+            float pMidY = game.player.getY() + 12.5f;
+            if (game.mapManager.getTileTypeAtWorld(pMidX, pMidY).equals("water")) {
+                if (waterStayStart == -1)
+                    waterStayStart = currentTime;
+                else if (currentTime - waterStayStart >= 60000) {
+                    gameproject.meta.AchievementManager.getInstance().onSecretTriggered("diver");
+                    diverAchieved = true;
+                }
+            } else {
+                waterStayStart = -1;
+            }
+        }
+
         if (visitedBuildings.size() >= game.buildings.size() && game.buildings.size() > 0) {
             gameproject.meta.AchievementManager.getInstance().onStatChanged("explorer", 1, "architect");
         }
@@ -160,11 +208,22 @@ public class PlayingState implements State {
 
         game.player.update(game);
 
-        // --- CẬP NHẬT CAMERA (Hoàn trả Snapping - Phản hồi tức thì) ---
-        // Gán trực tiếp nhưng làm tròn số nguyên để camera bám khít nhân vật không độ
-        // trễ
-        game.cameraX = Math.round(game.player.getX() - game.screenWidth / 2f + game.player.getBounds().width / 2f);
-        game.cameraY = Math.round(game.player.getY() - game.screenHeight / 2f + game.player.getBounds().height / 2f);
+        // --- CẬP NHẬT CAMERA ---
+        shakeOffsetDx = 0;
+        shakeOffsetDy = 0;
+        if (game.vfxManager.getShakeTimer() > 0) {
+            // Giảm cường độ rung (từ 10 xuống 4) để bớt gây khó chịu
+            shakeOffsetDx = (float) (Math.random() * 4 - 2);
+            shakeOffsetDy = (float) (Math.random() * 4 - 2);
+            game.vfxManager.decrementShakeTimer();
+        }
+
+        // Sử dụng Math.round để tọa độ camera luôn là số nguyên, tránh lệch pixel với
+        // player/tiles
+        game.cameraX = Math.round(game.player.getX() - game.screenWidth / 2f + game.player.getBounds().width / 2f)
+                + shakeOffsetDx;
+        game.cameraY = Math.round(game.player.getY() - game.screenHeight / 2f + game.player.getBounds().height / 2f)
+                + shakeOffsetDy;
 
         // Giới hạn camera không trượt ra ngoài bản đồ
         if (game.cameraX < 0)
@@ -175,6 +234,9 @@ public class PlayingState implements State {
             game.cameraX = GamePanel.WORLD_WIDTH - game.screenWidth;
         if (game.cameraY > GamePanel.WORLD_HEIGHT - game.screenHeight)
             game.cameraY = GamePanel.WORLD_HEIGHT - game.screenHeight;
+
+        game.camIntX = (int) (game.cameraX);
+        game.camIntY = (int) (game.cameraY);
 
         game.vfxManager.update(currentTime);
 
@@ -257,25 +319,11 @@ public class PlayingState implements State {
             }
         }
 
-        // --- KIỂM TRA WAVE TRANSITION (Thành tựu Genre) ---
+        // --- KIỂM TRA WAVE TRANSITION (Thành tựu Chuỗi Streak) ---
         if (game.entityManager.waveCount > currentWaveCheck) {
-            // Wave transition! Check previous wave stats.
+            // Nếu currentWaveCheck > 0, nghĩa là một wave vừa kết thúc thực sự
             if (currentWaveCheck > 0) {
-                if (damageTakenThisWave == 0) {
-                    noHitWaveStreak++;
-                    gameproject.meta.AchievementManager.getInstance().onStatChanged("combat", noHitWaveStreak,
-                            "flawless");
-                } else {
-                    noHitWaveStreak = 0;
-                }
-
-                if (bulletsShotThisWave == 0) {
-                    noShootWaveStreak++;
-                    gameproject.meta.AchievementManager.getInstance().onStatChanged("combat", noShootWaveStreak,
-                            "pacifist");
-                } else {
-                    noShootWaveStreak = 0;
-                }
+                checkWaveStreaks();
             }
             currentWaveCheck = game.entityManager.waveCount;
             damageTakenThisWave = 0;
@@ -285,6 +333,8 @@ public class PlayingState implements State {
         // --- KIỂM TRA CHIẾN THẮNG ---
         if (game.entityManager.waveCount >= gameproject.entity.EntityManager.FINAL_WAVE
                 && game.entityManager.enemies.isEmpty()) {
+            // Kiểm tra nốt wave cuối cùng cho chuỗi streak trước khi thắng
+            checkWaveStreaks();
             game.triggerVictory(!lostHealthThisRun, !usedDashThisRun);
         }
 
@@ -292,132 +342,66 @@ public class PlayingState implements State {
         if (game.player.getHearts() <= 0) {
             game.triggerGameOver();
         }
+
+        eventManager.update(game, currentTime);
     }
 
     private void handleEvents(GamePanel game, long currentTime) {
         int wave = game.entityManager.waveCount;
 
-        // Trigger mới mỗi 4 wave (bắt đầu từ wave 4)
         if (wave > 0 && wave % 4 == 0 && wave != lastCheckedWave) {
             lastCheckedWave = wave;
-            // Chọn ngẫu nhiên 1 trong các event
-            double rnd = Math.random();
-            if (rnd < 0.25)
-                activeEvent = EventType.ACID_RAIN;
-            else if (rnd < 0.50)
-                activeEvent = EventType.DARKNESS;
-            else if (rnd < 0.75)
-                activeEvent = EventType.MIMIC_MANIA;
-            else
-                activeEvent = EventType.BLOOD_MOON;
+
+            java.util.List<EventType> pool = game.currentMapConfig.possibleEvents;
+            if (pool != null && !pool.isEmpty()) {
+                activeEvent = pool.get((int) (Math.random() * pool.size()));
+            } else {
+                activeEvent = EventType.NONE;
+            }
 
             eventPhase = EventPhase.WARNING;
             nextPhaseTime = currentTime + 10000;
-            eventEndTime = currentTime + 50000; // Tổng 50s (10s báo + 40s chạy)
+            eventEndTime = currentTime + 50000;
+
+            // Kích hoạt thành tựu gặp mặt sự kiện
+            if (activeEvent != EventType.NONE) {
+                String eventKey = activeEvent.name().toLowerCase();
+                gameproject.meta.AchievementManager.getInstance().onEventMet(eventKey);
+            }
+
+            // Notification on phase change handled by Manager later
         }
 
         if (activeEvent != EventType.NONE) {
-            // Timeout logic: Khi hết thời gian, các treasure chưa mở sẽ hóa mimic
-            // Timeout logic
             if (currentTime > eventEndTime) {
                 if (eventPhase != EventPhase.ENDING) {
-                    // Chuyển sang phase kết thúc (dần dần sáng)
+                    EventPhase oldPhase = eventPhase;
                     eventPhase = EventPhase.ENDING;
-                    eventEndTime = currentTime + 3000; // 3 giây để tan biến bóng tối
-
-                    if (activeEvent == EventType.MIMIC_MANIA) {
-                        java.util.List<gameproject.entity.EventTreasure> chestsToConvert;
-                        synchronized (game.entityManager.eventChests) {
-                            chestsToConvert = new java.util.ArrayList<>(game.entityManager.eventChests);
-                            game.entityManager.eventChests.clear();
-                        }
-                        synchronized (game.entityManager.enemies) {
-                            for (gameproject.entity.EventTreasure et : chestsToConvert) {
-                                game.entityManager.enemies.add(new gameproject.entity.Mimic(et.x, et.y, wave));
-                            }
-                        }
-                        game.vfxManager.showWaveBanner("THE REMAINING CHESTS AWAKEN!", Color.RED, currentTime);
-                        // Trigger "Trust Issues" achievement
-                        gameproject.meta.AchievementManager.getInstance().onEventMet("mimic_mania");
-                    }
-                    return;
+                    eventEndTime = currentTime + 3000;
+                    eventManager.onPhaseChanged(game, oldPhase, eventPhase, currentTime);
                 } else {
                     activeEvent = EventType.NONE;
-                    return;
                 }
+                return;
             }
 
             if (eventPhase == EventPhase.WARNING) {
                 long timeLeft = (nextPhaseTime - currentTime) / 1000;
                 if (timeLeft >= 0) {
-                    String msg = "";
-                    if (activeEvent == EventType.ACID_RAIN)
-                        msg = "⚠ ACID RAIN IN " + timeLeft + "s! FIND SHELTER!";
-                    else if (activeEvent == EventType.DARKNESS)
-                        msg = "⚠ DARKNESS APPROACHING IN " + timeLeft + "s!";
-                    else if (activeEvent == EventType.BLOOD_MOON)
-                        msg = "⚠ BLOOD MOON IN " + timeLeft + "s! PREPARE FOR CARNAGE!";
-                    else if (activeEvent == EventType.MIMIC_MANIA) {
-                        msg = "⚠ FIND TREASURES IN BUILDINGS! (" + timeLeft + "s)";
-                    }
-
-                    // Chỉ show banner mỗi giây
-                    if (currentTime % 1000 < 50) {
-                        game.vfxManager.showWaveBanner(msg, Color.YELLOW, currentTime);
+                    String msg = eventManager.getWarningMessage(timeLeft);
+                    if (!msg.isEmpty()) {
+                        game.vfxManager.showWaveBanner("event_warning", msg, Color.YELLOW, currentTime);
                     }
                 }
                 if (currentTime > nextPhaseTime) {
+                    EventPhase oldPhase = eventPhase;
                     eventPhase = EventPhase.ACTIVE;
-                    String startMsg = "NIGHTFALL!";
-                    if (activeEvent == EventType.ACID_RAIN)
-                        startMsg = "ACID RAIN ACTIVE!";
-                    else if (activeEvent == EventType.MIMIC_MANIA) {
-                        startMsg = "FIND THEM BEFORE THEY AWAKEN!";
-                        // Spawn rương khi bắt đầu phase ACTIVE (hết 10s đếm ngược)
-                        synchronized (game.buildings) {
-                            for (Building b : game.buildings) {
-                                java.awt.Rectangle r = b.getBounds();
-                                game.entityManager.eventChests.add(new gameproject.entity.EventTreasure(
-                                        r.x + r.width / 2 - 20, r.y + r.height / 2 - 20));
-                            }
-                        }
-                    } else if (activeEvent == EventType.BLOOD_MOON)
-                        startMsg = "THE BLOOD MOON RISES!";
+                    eventManager.onPhaseChanged(game, oldPhase, eventPhase, currentTime);
+                    game.vfxManager.removeWaveBanner("event_warning");
 
-                    game.vfxManager.showWaveBanner(startMsg, Color.RED, currentTime);
-
-                    // Trigger Achievements for normal events when 10s warning ends
-                    if (activeEvent == EventType.ACID_RAIN)
-                        gameproject.meta.AchievementManager.getInstance().onEventMet("acid_rain");
-                    else if (activeEvent == EventType.DARKNESS)
-                        gameproject.meta.AchievementManager.getInstance().onEventMet("darkness");
-                    else if (activeEvent == EventType.BLOOD_MOON)
-                        gameproject.meta.AchievementManager.getInstance().onEventMet("blood_moon");
-                }
-            } else if (eventPhase == EventPhase.ACTIVE) {
-                if (activeEvent == EventType.ACID_RAIN) {
-                    // Gây sát thương mỗi 500ms
-                    if (currentTime - lastDamageTick > 500) {
-                        boolean safe = false;
-                        synchronized (game.buildings) {
-                            for (Building b : game.buildings) {
-                                if (b.isPlayerInside()) {
-                                    safe = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!safe) {
-                            int oldHearts = game.player.getHearts();
-                            if (game.player.takeHit()) {
-                                game.triggerGameOver();
-                            } else if (game.player.getHearts() < oldHearts) {
-                                lostHealthThisRun = true;
-                                clutchSurvivalStart = -1; // Reset clutch timer on damage
-                                game.vfxManager.triggerPlayerDamageFlash(currentTime);
-                            }
-                        }
-                        lastDamageTick = currentTime;
+                    String startMsg = eventManager.getStartMessage();
+                    if (!startMsg.isEmpty()) {
+                        game.vfxManager.showWaveBanner(startMsg, Color.RED, currentTime);
                     }
                 }
             }
@@ -480,20 +464,19 @@ public class PlayingState implements State {
             g.fillRect(0, 0, game.screenWidth, game.screenHeight);
         }
 
-        // CHỐT SỔ TỌA ĐỘ CAMERA DUY NHẤT 1 LẦN CHO CHU KỲ RENDER
-        game.camIntX = (int) Math.round(game.cameraX);
-        game.camIntY = (int) Math.round(game.cameraY);
+        // Dịch chuyển toàn bộ thế giới theo tọa độ camera số thực để mượt mà nhất
+        g2d.translate(-game.cameraX, -game.cameraY);
 
-        game.vfxManager.applyScreenShake(g2d);
-
-        // QUY CHUẨN PIXEL-PERFECT: Dịch chuyển toàn bộ thế giới theo tọa độ camera đã
-        // chốt sổ
-        g2d.translate(-game.camIntX, -game.camIntY);
+        // 0. Vẽ Tiles (Nước, Đất đặc thù)
+        String mapPrefix = game.currentMapConfig.type.name().toLowerCase();
+        game.mapManager.renderTiles(g2d, game.camIntX, game.camIntY, game.screenWidth, game.screenHeight, mapPrefix);
 
         // 1. Vẽ Sàn nhà (Nằm dưới mọi vật thể nhưng trên cỏ)
         synchronized (game.buildings) {
             for (gameproject.environment.Building b : game.buildings) {
-                b.renderFloor(g2d);
+                if (b.isVisible(game.camIntX, game.camIntY, game.screenWidth, game.screenHeight)) {
+                    b.renderFloor(g2d);
+                }
             }
         }
 
@@ -514,17 +497,39 @@ public class PlayingState implements State {
         game.entityManager.drawGroundItems(g);
 
         // 2. --- THUẬT TOÁN Y-SORTING (Z-INDEX) ---
-        // Gom tất cả các đối tượng có độ sâu vào một danh sách
-        java.util.List<gameproject.Renderable> renderList = new java.util.ArrayList<>();
+        // Tái sử dụng danh sách và áp dụng Culling ngay khi gom nhóm
+        renderList.clear();
         renderList.add(game.player);
-        synchronized (game.entityManager.enemies) {
-            renderList.addAll(game.entityManager.enemies);
-        }
-        renderList.addAll(game.mapManager.getAllObstacles());
 
-        // Sắp xếp theo tọa độ chân (Bottom Y)
-        java.util.Collections.sort(renderList,
-                java.util.Comparator.comparingDouble(gameproject.Renderable::getBottomY));
+        int camX = game.camIntX;
+        int camY = game.camIntY;
+        int sw = game.screenWidth;
+        int sh = game.screenHeight;
+
+        synchronized (game.entityManager.enemies) {
+            for (gameproject.entity.Enemy e : game.entityManager.enemies) {
+                // Sơ bộ kiểm tra tầm nhìn để giảm tải Sorting
+                if (e.getX() > camX - 100 && e.getX() < camX + sw + 100 &&
+                        e.getY() > camY - 100 && e.getY() < camY + sh + 100) {
+                    renderList.add(e);
+                }
+            }
+        }
+
+        for (gameproject.environment.Building b : game.buildings) {
+            if (b.isVisible(camX, camY, sw, sh)) {
+                // Các phần của building có tính Z-index (nếu có)
+            }
+        }
+
+        for (gameproject.Renderable r : game.mapManager.getAllObstacles()) {
+            if (r.getBottomY() > camY - 100 && r.getBottomY() < camY + sh + 200) {
+                renderList.add(r);
+            }
+        }
+
+        // Sắp xếp sử dụng Comparator tĩnh
+        java.util.Collections.sort(renderList, Y_COMPARATOR);
 
         // 3. Vẽ các đối tượng đã được sắp xếp
         for (gameproject.Renderable r : renderList) {
@@ -544,23 +549,79 @@ public class PlayingState implements State {
         // 5. VẼ MÁI NHÀ (Trên cùng) - Đồng bộ hóa để tránh CME
         synchronized (game.buildings) {
             for (gameproject.environment.Building b : game.buildings) {
-                b.renderRoof(g2d);
+                if (b.isVisible(game.camIntX, game.camIntY, game.screenWidth, game.screenHeight)) {
+                    b.renderRoof(g2d);
+                }
             }
         }
 
         // QUAY LẠI TỌA ĐỘ MÀN HÌNH (SCREEN SPACE) ĐỂ VẼ HUD
-        g2d.translate(game.camIntX, game.camIntY);
+        g2d.translate(game.cameraX, game.cameraY);
 
-        game.vfxManager.resetScreenShake(g2d);
         // Overlay toàn màn hình (Bóng tối, bão acid, flash đỏ, wave banner)
         long now = gameproject.GamePanel.getTickTime();
+
+        // Vẽ Map Overlay Color (Chỉ áp dụng trong game, không áp dụng cho UI chọn map)
+        if (game.currentMapConfig != null && game.currentMapConfig.overlayColor.getAlpha() > 0) {
+            g2d.setColor(game.currentMapConfig.overlayColor);
+            g2d.fillRect(0, 0, game.screenWidth, game.screenHeight);
+        }
+
+        eventManager.render(g2d, game, game.screenWidth, game.screenHeight, now);
         game.vfxManager.drawOverlay(g, game, game.screenWidth, game.screenHeight, now);
 
         // --- HUD --- (Vẽ HUD sau cùng để nổi lên trên các hiệu ứng môi trường)
         gameproject.ui.HUD.draw(g, game, game.player, game.entityManager.enemies);
 
+        // --- DIALOGUE UI --- (Vẽ sau cùng để đè lên HUD)
+        game.dialogueManager.draw(g, game.screenWidth, game.screenHeight);
+
         if (showStats) {
             CharacterStatsUI.draw(g, game, game.player);
         }
+    }
+
+    private void checkWaveStreaks() {
+        if (damageTakenThisWave == 0) {
+            noHitWaveStreak++;
+            gameproject.meta.AchievementManager.getInstance().onStatChanged("combat", noHitWaveStreak, "flawless");
+        } else {
+            noHitWaveStreak = 0;
+        }
+
+        if (bulletsShotThisWave == 0) {
+            noShootWaveStreak++;
+            gameproject.meta.AchievementManager.getInstance().onStatChanged("combat", noShootWaveStreak, "pacifist");
+        } else {
+            noShootWaveStreak = 0;
+        }
+    }
+
+    private void triggerInitialDialogue(GamePanel game) {
+        java.util.ArrayList<gameproject.ui.DialogueManager.DialogueLine> lines = new java.util.ArrayList<>();
+        String pKey = gameproject.meta.PlayerData.getPlayerImageKey();
+        String pName = game.player.getCharClass().name;
+
+        if (game.currentMapConfig.mapId == 0) { // Outskirts
+            lines.add(new gameproject.ui.DialogueManager.DialogueLine(pName,
+                    "The sun is shining for now, but I shouldn't let my guard down. These monsters are just the beginning.",
+                    pKey));
+            lines.add(new gameproject.ui.DialogueManager.DialogueLine(pName,
+                    "I'll use this clear sky to gather what I can. I need to be ready for when the air shifts and things become unpredictable.", pKey));
+            lines.add(new gameproject.ui.DialogueManager.DialogueLine(pName,
+                    "Something tells me this peace won't last long. I must prepare before the day turns chaotic!",
+                    pKey));
+        } else if (game.currentMapConfig.mapId == 1) { // Swamp
+            lines.add(new gameproject.ui.DialogueManager.DialogueLine(pName,
+                    "This fog... it's not natural. I can sense a dark presence lurking deep within this rot.", pKey));
+            lines.add(new gameproject.ui.DialogueManager.DialogueLine(pName,
+                    "I need to find the ancient stones scattered in this mire... and bring them to the sacred place to break the seal.",
+                    pKey));
+            lines.add(new gameproject.ui.DialogueManager.DialogueLine(pName,
+                    "I must be careful. If the fog thickens, the very waters here will turn into deadly poison.",
+                    pKey));
+        }
+
+        game.dialogueManager.startDialogue(lines);
     }
 }

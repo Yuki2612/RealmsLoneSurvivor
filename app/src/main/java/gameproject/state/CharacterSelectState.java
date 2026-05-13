@@ -58,7 +58,7 @@ public class CharacterSelectState implements State {
                 if (PlayerData.unlockedClasses.contains(c)) {
                     PlayerData.selectedClass = c;
                     PlayerData.save();
-                    game.startNewGame();
+                    game.changeState(new MapSelectState());
                 } else {
                     if (PlayerData.gold >= c.unlockCost) {
                         PlayerData.gold -= c.unlockCost;

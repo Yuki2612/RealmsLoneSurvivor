@@ -11,32 +11,38 @@ public class NormalEnemy extends Enemy {
     private int wanderTimer = 0;
     private Random rand = new Random();
     private int tier;
+    private String spriteKey;
 
-    public NormalEnemy(float startX, float startY, int tier, int surviveTimeSeconds) {
+    public NormalEnemy(float startX, float startY, int tier, int surviveTimeSeconds, int mapId) {
         super(startX, startY, 30, 0, 0, Color.WHITE);
         this.isBoss = false;
         this.tier = tier;
 
+        // Công thức chọn ảnh: tier + (mapId * 5)
+        // Ví dụ: MapId=0 (Outskirts) -> 1-5, MapId=1 (Swamp) -> 6-10
+        int spriteIndex = tier + (mapId * 5);
+        this.spriteKey = "enemy" + spriteIndex;
+
         switch (tier) {
             case 1 -> {
                 this.maxHp = 20;
-                this.speed = 0.9f;
+                this.speed = 0.8f;
             }
             case 2 -> {
                 this.maxHp = 30;
-                this.speed = 1.1f;
+                this.speed = 1.0f;
             }
             case 3 -> {
                 this.maxHp = 50;
-                this.speed = 1.4f;
+                this.speed = 1.2f;
             }
             case 4 -> {
                 this.maxHp = 70;
-                this.speed = 1.7f;
+                this.speed = 1.4f;
             }
             default -> {
                 this.maxHp = 100;
-                this.speed = 2.0f;
+                this.speed = 1.6f;
                 this.tier = 5;
             }
         }
@@ -55,6 +61,6 @@ public class NormalEnemy extends Enemy {
 
     @Override
     public void draw(Graphics g) {
-        drawSprite(g, "enemy" + tier);
+        drawSprite(g, spriteKey);
     }
 }

@@ -44,7 +44,6 @@ public class FlowField {
             return;
 
         // BƯỚC ĐỘT PHÁ: Cache trước bản đồ vật cản dựa trên Hitbox pixel chuẩn
-        // Không dùng isSolidGrid 64x64 thô kệch nữa
         boolean[][] solidNodes = new boolean[subRows][subCols];
         for (int r = 0; r < subRows; r++) {
             for (int c = 0; c < subCols; c++) {
@@ -52,21 +51,13 @@ public class FlowField {
             }
         }
 
-        // BƯỚC ĐỘT PHÁ: Đục lỗ 3x3 quanh người chơi để AI loang được kể cả khi đứng sát vật thể to
-        Queue<Point> queue = new LinkedList<>();
-        for (int dr = -1; dr <= 1; dr++) {
-            for (int dc = -1; dc <= 1; dc++) {
-                int nr = targetNodeRow + dr;
-                int nc = targetNodeCol + dc;
-                if (nr >= 0 && nr < subRows && nc >= 0 && nc < subCols) {
-                    solidNodes[nr][nc] = false;
-                    distanceField[nr][nc] = 0;
-                    queue.add(new Point(nc, nr));
-                }
-            }
-        }
-
         // BFS Loang khoảng cách trên lưới độ phân giải cao
+        Queue<Point> queue = new LinkedList<>();
+        // Đảm bảo node đích luôn có thể đi vào được để AI không bị kẹt khi người chơi đứng sát vật thể
+        solidNodes[targetNodeRow][targetNodeCol] = false; 
+        distanceField[targetNodeRow][targetNodeCol] = 0;
+        queue.add(new Point(targetNodeCol, targetNodeRow));
+
         while (!queue.isEmpty()) {
             Point p = queue.poll();
             int r = p.y;
@@ -77,38 +68,48 @@ public class FlowField {
                 int nc = c + dCol[i];
 
                 if (nr >= 0 && nr < subRows && nc >= 0 && nc < subCols) {
-                    if (!solidNodes[nr][nc] && distanceField[nr][nc] == MAX_COST) {
-                        // Chặn cắt góc qua tường chéo
+                    // Penalty cho vật cản: Giảm xuống 15 để AI cân bằng giữa né tường và áp sát người chơi
+                    int moveCost = (solidNodes[nr][nc]) ? 15 : 1;
+                    int newCost = distanceField[r][c] + moveCost;
+
+                    if (newCost < distanceField[nr][nc]) {
+                        // Chặn cắt góc qua tường chéo nếu node bên cạnh là tường
                         if (i >= 4) {
                             if (solidNodes[r][nc] || solidNodes[nr][c])
                                 continue;
                         }
-                        distanceField[nr][nc] = distanceField[r][c] + 1;
+                        distanceField[nr][nc] = newCost;
                         queue.add(new Point(nc, nr));
                     }
                 }
             }
         }
 
-        // Tạo Vector chỉ hướng
+        // Tạo Vector chỉ hướng (Gradient Descent)
         for (int r = 0; r < subRows; r++) {
             for (int c = 0; c < subCols; c++) {
                 if (distanceField[r][c] == MAX_COST || distanceField[r][c] == 0)
                     continue;
 
                 float vx = 0, vy = 0;
+                int currentCost = distanceField[r][c];
+
                 for (int i = 0; i < 8; i++) {
                     int nr = r + dRow[i];
                     int nc = c + dCol[i];
 
                     int neighborCost;
-                    if (nr < 0 || nr >= subRows || nc < 0 || nc >= subCols || solidNodes[nr][nc]) {
-                        neighborCost = distanceField[r][c] + 20; // Lực đẩy văng ra xa Hitbox
+                    if (nr < 0 || nr >= subRows || nc < 0 || nc >= subCols) {
+                        neighborCost = currentCost + 20;
                     } else {
                         neighborCost = distanceField[nr][nc];
                     }
-                    vx -= dCol[i] * neighborCost;
-                    vy -= dRow[i] * neighborCost;
+                    
+                    // Vector hướng về phía có cost thấp hơn
+                    if (neighborCost < currentCost) {
+                        vx += dCol[i] * (currentCost - neighborCost);
+                        vy += dRow[i] * (currentCost - neighborCost);
+                    }
                 }
 
                 float len = (float) Math.sqrt(vx * vx + vy * vy);
@@ -126,6 +127,12 @@ public class FlowField {
     private boolean isNodeSolid(MapManager map, int subCol, int subRow) {
         float cx = subCol * NODE_SIZE + NODE_SIZE / 2.0f;
         float cy = subRow * NODE_SIZE + NODE_SIZE / 2.0f;
+        
+        // KIỂM TRA NHANH: Nếu ô lưới chứa node này được đánh dấu là Solid, thì node đó Solid
+        if (map.isSolidGrid((int)(cx / MapManager.TILE_SIZE), (int)(cy / MapManager.TILE_SIZE))) {
+            return true;
+        }
+
         // Dùng thuật toán Broad-phase O(1) để lấy danh sách Hitbox gần đó
         List<Obstacle> near = map.getObstaclesInRadius(cx, cy, MapManager.TILE_SIZE);
         for (Obstacle obs : near) {

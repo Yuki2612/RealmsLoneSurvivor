@@ -567,9 +567,6 @@ public class PhantomWarlock extends Enemy {
     private void summonClones(GamePanel panel) {
         isClonePhase = true;
 
-        float px = panel.player.getX();
-        float py = panel.player.getY();
-
         // 6 vị trí ở rìa vòng Playground (3 trái, 3 phải)
         float[][] positions = new float[6][2];
         float[] angles = {
@@ -607,6 +604,16 @@ public class PhantomWarlock extends Enemy {
             return result;
         }
         return null;
+    }
+
+    @Override
+    public boolean shouldRemove() {
+        if (hp <= 0) {
+            // Khi boss chết, đảm bảo tắt chế độ phân thân để clones tự hủy
+            isClonePhase = false;
+            return true;
+        }
+        return false;
     }
 
     @Override
@@ -762,31 +769,20 @@ public class PhantomWarlock extends Enemy {
         }
 
         if (img != null) {
-            // 1. Chỉ dùng ĐÚNG MỘT hệ số Scale cho toàn bộ các trạng thái
-            float scale = 2.0f; // Đã giảm độ to chung của nhân vật xuống 1 chút
-
-            // 2. Lấy kích thước THẬT của khung hình đang chạy
+            float scale = 2.0f;
             int imgW = img.getWidth();
             int imgH = img.getHeight();
-
-            // 3. Tính toán kích thước vẽ ra màn hình
             int drawW = (int) (imgW * scale);
             int drawH = (int) (imgH * scale);
-
-            // 4. CHỐT TỌA ĐỘ
-            // Căn tâm X vào giữa cơ thể:
             int drawX = (int) (x + size / 2) - drawW / 2;
-            // Ép tọa độ Y chạm đúng gót chân (Trừ đi toàn bộ chiều cao của ảnh):
             int drawY = (int) (y + size) - drawH;
 
-            // 5. Vẽ và lật mặt (Flip)
             if (!facingRight) {
                 g2d.drawImage(img, drawX + drawW, drawY, -drawW, drawH, null);
             } else {
                 g2d.drawImage(img, drawX, drawY, drawW, drawH, null);
             }
 
-            // --- HIỆU ỨNG NHẤP NHÁY TRẮNG (HIT FLASH) ---
             long now = gameproject.GamePanel.getTickTime();
             if (now < hitFlashEndTime) {
                 float flashAlpha = 0.65f * (float) (hitFlashEndTime - now) / 80f;
@@ -795,6 +791,9 @@ public class PhantomWarlock extends Enemy {
                 g2d.setColor(Color.WHITE);
                 g2d.fillRect(drawX, drawY, drawW, drawH);
             }
+
+            // Vẽ Hào quang Lá chắn (Shield Halo)
+            drawShieldHalo(g2d, x, y, size);
         } else {
             // Fallback
             g2d.setColor(new Color(150, 50, 200));
@@ -802,6 +801,43 @@ public class PhantomWarlock extends Enemy {
         }
 
         g2d.dispose();
+
+        // --- DEBUG HITBOX ---
+        if (GamePanel.showHitboxes) {
+            g.setColor(Color.RED);
+            Rectangle rect = getBounds();
+            g.drawRect(rect.x, rect.y, rect.width, rect.height);
+        }
+    }
+
+    private void drawShieldHalo(Graphics2D g2d, float bx, float by, float bSize) {
+        float centerX = bx + bSize / 2f;
+        float centerY = by + bSize / 2f;
+        float shieldSize = bSize * 2.5f;
+
+        // Cường độ lá chắn dựa trên damageReduction (0.8 max -> 0 min)
+        float intensity = damageReduction / 0.8f;
+        if (intensity <= 0)
+            return;
+
+        long now = gameproject.GamePanel.getTickTime();
+        float pulse = (float) (Math.sin(now / 200.0) * 0.1f + 0.9f);
+        float currentShieldSize = shieldSize * pulse;
+
+        // 1. Vẽ quầng sáng mờ (Glow) - Xanh biển sâu
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.35f * intensity));
+        g2d.setColor(new Color(0, 100, 150));
+        g2d.fillOval((int) (centerX - currentShieldSize / 2), (int) (centerY - currentShieldSize / 2),
+                (int) currentShieldSize, (int) currentShieldSize);
+
+        // 2. Vẽ viền năng lượng - Cyan sáng
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.6f * intensity));
+        g2d.setStroke(new java.awt.BasicStroke(4f));
+        g2d.setColor(new Color(0, 220, 255));
+        g2d.drawOval((int) (centerX - currentShieldSize / 2), (int) (centerY - currentShieldSize / 2),
+                (int) currentShieldSize, (int) currentShieldSize);
+
+        g2d.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 1.0f));
     }
 
     // Lớp nội (Inner Class) đại diện cho phân thân của Boss
@@ -926,6 +962,9 @@ public class PhantomWarlock extends Enemy {
                     g2d.setColor(Color.WHITE);
                     g2d.fillRect(drawX, drawY, drawW, drawH);
                 }
+
+                // Vẽ Hào quang Lá chắn giống hệt Boss chính
+                parent.drawShieldHalo(g2d, x, y, size);
             }
             g2d.dispose();
         }

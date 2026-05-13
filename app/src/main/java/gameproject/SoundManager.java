@@ -84,13 +84,22 @@ public class SoundManager {
     }
 
     public static void play(String name) {
+        play(name, 1.0f);
+    }
+
+    public static void play(String name, float volMulti) {
         Clip[] clips = clipPool.get(name);
         if (clips == null)
             return;
 
+        // Giảm âm lượng mặc định cho hiệu ứng nổ (explosion) để bớt chói tai
+        if (name.equals("explosion")) {
+            volMulti *= 0.6f;
+        }
+
         int idx = clipIndex.get(name);
         Clip clip = clips[idx];
-        setClipVolume(clip, sfxVolume);
+        setClipVolume(clip, sfxVolume * volMulti);
         clip.setFramePosition(0);
         clip.start();
         clipIndex.put(name, (idx + 1) % clips.length);
@@ -106,12 +115,21 @@ public class SoundManager {
 
         Clip next = musicPool.get(name);
         if (next != null) {
-            next.setFramePosition(0);
-            setClipVolume(next, 0.0f);
-            next.loop(Clip.LOOP_CONTINUOUSLY);
-            next.start();
             currentMusicName = name;
-            startFadeIn(name, 250);
+            // Preload trên thread riêng để không block game loop
+            new Thread(() -> {
+                try {
+                    next.setFramePosition(0);
+                    setClipVolume(next, 0.0f);
+                    next.start(); // Khởi động clip ở volume 0
+                    Thread.sleep(300); // Chờ audio buffer sẵn sàng
+                    next.stop();
+                    next.setFramePosition(0); // Reset về đầu bài
+                    next.loop(Clip.LOOP_CONTINUOUSLY);
+                    next.start();
+                    startFadeIn(name, 250);
+                } catch (Exception e) {}
+            }).start();
         }
     }
 
@@ -151,7 +169,7 @@ public class SoundManager {
                 float dB = (float) (Math.log(vol <= 0 ? 0.0001 : vol) / Math.log(10.0) * 20.0);
                 
                 // Khuếch đại nhạc Boss (+5dB để tạo độ căng thẳng)
-                if (currentMusicName != null && currentMusicName.equals("bossbgm") && clip == musicPool.get("bossbgm")) {
+                if (currentMusicName != null && currentMusicName.startsWith("bossbgm")) {
                     dB += 5.0f;
                 }
                 

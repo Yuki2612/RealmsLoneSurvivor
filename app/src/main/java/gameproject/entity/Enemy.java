@@ -33,6 +33,7 @@ public abstract class Enemy implements gameproject.Renderable {
     public float kbX = 0, kbY = 0;
 
     public boolean isBoss = false;
+    public boolean isFinalBoss = false;
     public boolean isElite = false;
     public EliteAffix eliteAffix = null;
     public int shieldHits = 0; // Cho affix SHIELDED
@@ -60,6 +61,7 @@ public abstract class Enemy implements gameproject.Renderable {
     // Cache chỉ số sát thương của player – được EntityManager cập nhật mỗi frame
     // Dùng để phản ứng nguyên tố scale cùng progression của player
     public int playerDamageCache = 10;
+    protected float damageReduction = 0f;
 
     private long lastBurnTick = 0;
     private long lastPlasmaTick = 0;
@@ -101,7 +103,19 @@ public abstract class Enemy implements gameproject.Renderable {
 
     public abstract void draw(Graphics g);
 
-    public void updateStatusEffects(long currentTime, VFXManager vfxManager) {
+    public void updateStatusEffects(long currentTime, VFXManager vfxManager, GamePanel panel) {
+        // Cập nhật giảm sát thương cho Boss cuối tại Swamp
+        if (isFinalBoss && panel.currentMapConfig.type == gameproject.environment.MapType.SWAMP) {
+            int runes = 0;
+            for (gameproject.environment.Obstacle obs : panel.mapManager.getAllObstacles()) {
+                if (obs instanceof gameproject.environment.Altar) {
+                    runes = ((gameproject.environment.Altar) obs).getRuneCount();
+                    break;
+                }
+            }
+            this.damageReduction = Math.max(0, 0.8f - (runes * 0.2f));
+        }
+
         if (burnEndTime > currentTime && currentTime - lastBurnTick >= 500) {
             // Burn DoT: 25% playerDamage/tick
             takeDamage(Math.max(3, playerDamageCache / 4), vfxManager, currentTime);
@@ -244,7 +258,8 @@ public abstract class Enemy implements gameproject.Renderable {
             return;
         }
 
-        this.hp -= damage;
+        int finalDamage = (int) (damage * (1.0f - damageReduction));
+        this.hp -= finalDamage;
         hitFlashEndTime = currentTime + 80; // Hit flash 80ms
         if (vfxManager != null) {
             vfxManager.addDamageText(this.x + 15, this.y, damage, currentTime, textColor);
@@ -296,12 +311,32 @@ public abstract class Enemy implements gameproject.Renderable {
     }
 
     public Rectangle getBounds() {
+        // TĂNG HITBOX CHO BOSS: Boss sẽ có hitbox lớn hơn đáng kể để khớp với sprite khổng lồ
+        if (isBoss) {
+            int hbW = (int) (size * 1.6f);
+            int hbH = (int) (size * 1.7f); // Cao hơn để bao phủ cả đầu boss
+            // Căn giữa ngang tại x + size/2 và nâng cao lên để bao phủ sprite
+            return new Rectangle((int) (x + size / 2 - hbW / 2), (int) (y + size - hbH), hbW, hbH);
+        }
+        // Cho quái thường: Giữ nguyên
         return new Rectangle((int) x, (int) y, size, size);
     }
 
     protected void drawSprite(Graphics g, String imageKey) {
         long now = gameproject.GamePanel.getTickTime();
-        java.awt.image.BufferedImage img = ImageManager.get(imageKey);
+        
+        // Ưu tiên lấy Animation
+        java.awt.image.BufferedImage[] anim = ImageManager.getAnimation(imageKey);
+        java.awt.image.BufferedImage img = null;
+        
+        if (anim != null && anim.length > 0) {
+            int delay = 150; // 150ms mỗi khung hình
+            int index = (int) ((now / delay) % anim.length);
+            img = anim[index];
+        } else {
+            img = ImageManager.get(imageKey);
+        }
+
         Graphics2D g2d = (Graphics2D) g;
 
         // Alpha: fade out khi đang chết

@@ -14,12 +14,13 @@ public class PlayerData {
     public static String getPlayerImageKey() {
         return "player" + (selectedClass.ordinal() + 1);
     }
-    
-    // Admin Debug settings (Reset every session or persist as you like, here we keep them static)
+
+    // Admin Debug settings (Reset every session or persist as you like, here we
+    // keep them static)
     public static int debugStartWave = 1;
     public static int debugStartLevel = 1;
 
-    public static int statHealthLevel = 0; // 10 level = 1 Heart
+    public static int statHealthLevel = 0; // 1 level = +1 Max HP (max 3)
     public static int statDamageLevel = 0; // +1 dmg per level
     public static int statSpeedLevel = 0; // +2% speed per level
     public static int statDashLevel = 0; // -2% cooldown per level
@@ -27,18 +28,18 @@ public class PlayerData {
     public static int statCooldownLevel = 0; // -1% weapon cooldown per level
 
     // Evolution Stats (5 levels each)
-    public static int evoVampirism = 0;     // Life on Kill
-    public static int evoBloodlust = 0;     // Crit Multiplier
-    public static int evoPhantomDash = 0;   // Explosive Illusion
-    public static int evoBerserker = 0;     // Speed boost on damage
-    public static int evoFrenzy = 0;        // Fire rate on Crit
+    public static int evoVampirism = 0; // Life on Kill
+    public static int evoBloodlust = 0; // Crit Multiplier
+    public static int evoPhantomDash = 0; // Explosive Illusion
+    public static int evoBerserker = 0; // Speed boost on damage
+    public static int evoFrenzy = 0; // Fire rate on Crit
 
     public static java.util.Map<gameproject.skill.Upgrade, Integer> skillSoulLevels = new java.util.HashMap<>();
 
     private static final String SAVE_FILE = "savegame.dat";
 
     public static void load() {
-        unlockedClasses.add(CharacterClass.YUKI); 
+        unlockedClasses.add(CharacterClass.YUKI);
         unlockedSkills.add(gameproject.skill.Upgrade.CHAIN_LIGHTNING);
         unlockedSkills.add(gameproject.skill.Upgrade.TRAIL_OF_FIRE);
         unlockedSkills.add(gameproject.skill.Upgrade.ORBITING_ORBS);
@@ -47,7 +48,8 @@ public class PlayerData {
         unlockedSkills.add(gameproject.skill.Upgrade.POISON_CLOUD);
 
         File file = new File(SAVE_FILE);
-        if (!file.exists()) return;
+        if (!file.exists())
+            return;
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             StringBuilder encryptedContent = new StringBuilder();
@@ -55,32 +57,40 @@ public class PlayerData {
             while ((line = br.readLine()) != null) {
                 encryptedContent.append(line);
             }
-            
+
             String decrypted = decrypt(encryptedContent.toString());
             StringReader sr = new StringReader(decrypted);
             BufferedReader reader = new BufferedReader(sr);
 
             String gLine = reader.readLine();
-            if (gLine != null && gLine.contains(":") && gLine.split(":").length > 1) gold = Integer.parseInt(gLine.split(":")[1]);
-            
+            if (gLine != null && gLine.contains(":") && gLine.split(":").length > 1)
+                gold = Integer.parseInt(gLine.split(":")[1]);
+
             String sLine = reader.readLine();
-            if (sLine != null && sLine.contains(":") && sLine.split(":").length > 1) soulStones = Integer.parseInt(sLine.split(":")[1]);
-            
+            if (sLine != null && sLine.contains(":") && sLine.split(":").length > 1)
+                soulStones = Integer.parseInt(sLine.split(":")[1]);
+
             String selLine = reader.readLine();
             if (selLine != null && selLine.contains(":") && selLine.split(":").length > 1) {
-                try { selectedClass = CharacterClass.valueOf(selLine.split(":")[1]); } catch(Exception e) {}
+                try {
+                    selectedClass = CharacterClass.valueOf(selLine.split(":")[1]);
+                } catch (Exception e) {
+                }
             }
-            
+
             String unlockedLine = reader.readLine();
             if (unlockedLine != null && unlockedLine.contains(":") && unlockedLine.split(":").length > 1) {
                 String[] classes = unlockedLine.split(":")[1].split(",");
                 for (String c : classes) {
                     if (!c.trim().isEmpty()) {
-                        try { unlockedClasses.add(CharacterClass.valueOf(c.trim())); } catch(Exception e) {}
+                        try {
+                            unlockedClasses.add(CharacterClass.valueOf(c.trim()));
+                        } catch (Exception e) {
+                        }
                     }
                 }
             }
-            
+
             String statsLine = reader.readLine();
             if (statsLine != null && statsLine.contains(":") && statsLine.split(":").length > 1) {
                 String[] stats = statsLine.split(":")[1].split(",");
@@ -96,11 +106,12 @@ public class PlayerData {
                         evoBloodlust = Integer.parseInt(stats[7]);
                         evoPhantomDash = Integer.parseInt(stats[8]);
                         evoBerserker = Integer.parseInt(stats[9]);
-                        if (stats.length >= 11) evoFrenzy = Integer.parseInt(stats[10]);
+                        if (stats.length >= 11)
+                            evoFrenzy = Integer.parseInt(stats[10]);
                     }
                 }
             }
-            
+
             String skillsLine = reader.readLine();
             if (skillsLine != null && skillsLine.contains(":") && skillsLine.split(":").length > 1) {
                 String[] skills = skillsLine.split(":")[1].split(",");
@@ -109,20 +120,26 @@ public class PlayerData {
                         String[] parts = s.split("=");
                         if (parts.length == 2) {
                             try {
-                                skillSoulLevels.put(gameproject.skill.Upgrade.valueOf(parts[0]), Integer.parseInt(parts[1]));
-                            } catch(Exception e) {}
+                                skillSoulLevels.put(gameproject.skill.Upgrade.valueOf(parts[0]),
+                                        Integer.parseInt(parts[1]));
+                            } catch (Exception e) {
+                            }
                         }
                     }
                 }
             }
 
             String unlockedSkillsLine = reader.readLine();
-            if (unlockedSkillsLine != null && unlockedSkillsLine.contains(":") && unlockedSkillsLine.split(":").length > 1) {
-                unlockedSkills.clear(); 
+            if (unlockedSkillsLine != null && unlockedSkillsLine.contains(":")
+                    && unlockedSkillsLine.split(":").length > 1) {
+                unlockedSkills.clear();
                 String[] sks = unlockedSkillsLine.split(":")[1].split(",");
                 for (String s : sks) {
                     if (!s.trim().isEmpty()) {
-                        try { unlockedSkills.add(gameproject.skill.Upgrade.valueOf(s.trim())); } catch(Exception e) {}
+                        try {
+                            unlockedSkills.add(gameproject.skill.Upgrade.valueOf(s.trim()));
+                        } catch (Exception e) {
+                        }
                     }
                 }
             }
@@ -137,20 +154,20 @@ public class PlayerData {
             sb.append("Gold:").append(gold).append("\n");
             sb.append("Souls:").append(soulStones).append("\n");
             sb.append("SelectedClass:").append(selectedClass.name()).append("\n");
-            
+
             StringBuilder sbClasses = new StringBuilder();
             for (CharacterClass c : unlockedClasses) {
                 sbClasses.append(c.name()).append(",");
             }
             sb.append("Unlocked:").append(sbClasses.toString()).append("\n");
-            
+
             sb.append("Stats:").append(statHealthLevel).append(",").append(statDamageLevel).append(",")
-              .append(statSpeedLevel).append(",").append(statDashLevel).append(",")
-              .append(statCritLevel).append(",").append(statCooldownLevel).append(",")
-              .append(evoVampirism).append(",").append(evoBloodlust).append(",")
-              .append(evoPhantomDash).append(",").append(evoBerserker).append(",")
-              .append(evoFrenzy).append("\n");
-            
+                    .append(statSpeedLevel).append(",").append(statDashLevel).append(",")
+                    .append(statCritLevel).append(",").append(statCooldownLevel).append(",")
+                    .append(evoVampirism).append(",").append(evoBloodlust).append(",")
+                    .append(evoPhantomDash).append(",").append(evoBerserker).append(",")
+                    .append(evoFrenzy).append("\n");
+
             StringBuilder sbSkills = new StringBuilder();
             for (java.util.Map.Entry<gameproject.skill.Upgrade, Integer> entry : skillSoulLevels.entrySet()) {
                 sbSkills.append(entry.getKey().name()).append("=").append(entry.getValue()).append(",");
@@ -213,7 +230,9 @@ public class PlayerData {
                 result[i] = (byte) (bytes[i] ^ keyBytes[i % keyBytes.length]);
             }
             return java.util.Base64.getEncoder().encodeToString(result);
-        } catch (Exception e) { return data; }
+        } catch (Exception e) {
+            return data;
+        }
     }
 
     private static String decrypt(String data) {
@@ -225,6 +244,8 @@ public class PlayerData {
                 result[i] = (byte) (bytes[i] ^ keyBytes[i % keyBytes.length]);
             }
             return new String(result, "UTF-8");
-        } catch (Exception e) { return ""; }
+        } catch (Exception e) {
+            return "";
+        }
     }
 }
